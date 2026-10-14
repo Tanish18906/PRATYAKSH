@@ -49,3 +49,32 @@ no claims; the only hits are code comments saying probabilities are NOT calibrat
 - `main` currently has `feat/engine` only; merge order at the gate is shared files, sim, engine, api, ui. `config.py` was first written on `feat/engine` and extended on `feat/api`; the trial merge was clean.
 
 STOPPED. Waiting for APPROVED PHASE 5.
+
+---
+
+## Addendum: hostile testing in `testing/` (git-ignored) and the fixes Tanish approved
+
+What was run: `testing/t_engine.py` (about 450 generated scenarios in 5 leak archetypes, metamorphic and determinism checks,
+21 degenerate inputs, scale) and `testing/t_api.py` (live uvicorn, 480 concurrent requests, hostile bodies and paths,
+restart, concurrent benchmark runs). Generator is mine, not the simulator; accuracy figures are information only.
+
+Everything that held: no engine exception, strict models accept input and output, ids are labels only, timestamp shift
+invariance, byte-identical output across `PYTHONHASHSEED`, hostile requests answered with the contract error shape.
+
+Fixed in this addendum:
+1. Audit ids duplicated under concurrency. One lock now covers the whole counter/assign/write sequence. New test spawns 40 threads x 40
+   appends with a tiny switch interval and fails reliably on the old code. Live harness: 3 of 3 runs clean (was 2 of 3 failing).
+   README: run one uvicorn worker.
+2. `Event.object` may be null (models.py and docs/01 section 4); model test with a null-object `permission_change`, plus an API
+   test and a baseline test. The baseline `startswith` on null was a latent crash and is fixed.
+
+Logged, not changed: ACTOR_ALT_MAX tuning candidate (QUESTIONS.md), request body size limit (IDEAS.md).
+
+NOT done: tie order of `origin_candidates` (item 4 of Tanish's list). It is a change in `backend/app/engine/`, which is outside the
+api module, and the project rule is that only `OVERRIDE OWNERSHIP: engine` extends scope. Waiting for that keyword.
+Note for that change: a tie-break on artifact id is a decision from an id value (03 sec 17, test H8); an id-free tie-break
+(created_ts, then row_count, then creator) with id only as the last resort avoids that.
+
+Commands: `cd backend && ../.venv/bin/python -m pytest -q` -> 213 passed (107 engine + 106 api).
+
+STOPPED. Waiting for APPROVED PHASE 5 (addendum) and the engine override for item 4.

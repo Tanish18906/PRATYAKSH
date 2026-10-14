@@ -83,7 +83,7 @@ class Event(_M):
     source: str
     actor: str
     action: Action
-    object: str
+    object: str | None  # null for permission_change (contract section 4 table)
     from_loc: str | None
     to_loc: str | None
     rows: int

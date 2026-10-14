@@ -25,7 +25,7 @@ def last_accessor(sc: dict) -> list:  # B1
     data = {d["id"] for d in sc["datasets"] if d["name"] == "customers"} | {"ds:customers"}
     last = {}
     for e in sc["events"]:
-        if e["ts"] <= found and (e["object"] in data or e["object"].startswith("art:")):
+        if e["ts"] <= found and (e["object"] in data or (e["object"] or "").startswith("art:")):
             last[e["actor"]] = max(last.get(e["actor"], ""), e["ts"])
     return [a["id"] for a in sorted(sc["actors"], key=lambda a: last.get(a["id"], ""), reverse=True)]
 

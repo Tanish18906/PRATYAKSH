@@ -40,3 +40,28 @@ def test_entries_validate_against_the_contract_model(tmp_path, monkeypatch):
     for action in ("scenario_generate", "telegram_export", "trace", "reveal", "report_export", "inject",
                    "canary_alert", "benchmark_run"):
         AuditEntry.model_validate(audit.append(action, scenario_id=None))
+
+
+def test_concurrent_appends_get_unique_contiguous_ids(tmp_path, monkeypatch):
+    """The id is read, incremented, assigned and written as one step: no duplicates, no gaps, no lost lines."""
+    import sys
+    import threading
+
+    monkeypatch.setattr(audit, "PATH", tmp_path / "audit.jsonl")
+    audit.reset()
+    old = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)  # make thread switches frequent so an unlocked version fails reliably
+    try:
+        threads = [threading.Thread(target=lambda: [audit.append("trace", scenario_id="scn:A") for _ in range(40)])
+                   for _ in range(40)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    finally:
+        sys.setswitchinterval(old)
+    ids = [e["id"] for e in audit.entries()]
+    lines = [json.loads(x)["id"] for x in (tmp_path / "audit.jsonl").read_text().splitlines()]
+    assert len(ids) == 1600 and len(set(ids)) == 1600
+    assert sorted(int(i.split(":")[1]) for i in ids) == list(range(1, 1601))
+    assert lines == ids  # file order equals id order

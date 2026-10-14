@@ -242,6 +242,9 @@ pytest -q
 uvicorn app.main:app --port 8000 --reload
 ```
 
+> **Run exactly one uvicorn worker (the default). Do not pass `--workers`.** Loaded scenarios, audit numbering and
+> benchmark state live in the memory of one process, and audit ids are made unique with an in-process lock.
+
 Verify backend health:
 ```bash
 curl http://localhost:8000/api/health

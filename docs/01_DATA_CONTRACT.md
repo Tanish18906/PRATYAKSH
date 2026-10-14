@@ -106,7 +106,7 @@ interface Event {
   source: string;             // src: id that logged this event
   actor: string;              // act:
   action: Action;
-  object: string;             // ds: or art:
+  object: string | null;      // ds: or art:, null for permission_change
   from_loc: string | null;    // Location.id where the data was
   to_loc: string | null;      // Location.id where the data went (null for plain reads)
   rows: number;               // rows touched, 0 if not applicable

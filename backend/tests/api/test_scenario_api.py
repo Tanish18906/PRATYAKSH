@@ -165,3 +165,14 @@ def test_trace_is_deterministic_over_http(client):
     a = client.post("/api/trace", json={"scenario_id": "scn:H6"}).text
     b = client.post("/api/trace", json={"scenario_id": "scn:H6"}).text
     assert a == b and json.loads(a)["origin_pinned"] is True
+
+
+def test_api_accepts_a_scenario_with_a_null_object_permission_change(client):
+    from tests.api.test_models import permission_change_with_null_object
+    pub = permission_change_with_null_object(build("H1"))
+    pub["id"] = "scn:PERM"
+    main.register(pub)
+    assert client.get("/api/scenario/scn:PERM").status_code == 200
+    r = client.post("/api/trace", json={"scenario_id": "scn:PERM"})
+    assert r.status_code == 200, r.text
+    assert client.get("/api/scenario/scn:PERM", params={"full": "true"}).json() == pub
