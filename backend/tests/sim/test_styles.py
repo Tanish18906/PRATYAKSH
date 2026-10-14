@@ -1,6 +1,7 @@
 import unittest
 
 from app.sim.styles import format_profile, render_csv, render_value
+from app.sim.leakfile import mask_value
 
 
 class StyleTests(unittest.TestCase):
@@ -53,6 +54,14 @@ class StyleTests(unittest.TestCase):
         self.assertEqual(marketing, b"Phone;City\n+91 98765 43221;Raipur\n")
         notebook = render_csv([], ["full_name"], "NOTEBOOK")
         self.assertEqual(notebook, b"fullName\n")
+
+    def test_masked_preview_vectors(self):
+        self.assertEqual(mask_value("email", "ravi.menon@example.com"), "r***@example.com")
+        self.assertEqual(mask_value("phone", "+91-9876543221"), "+91-98******21")
+        self.assertEqual(mask_value("full_name", "Ravi Menon"), "R. M.")
+        self.assertEqual(mask_value("policy_no", "NH-2025-004217"), "NH**********17")
+        self.assertEqual(mask_value("customer_id", "C0048211"), "*****211")
+        self.assertEqual(mask_value("dob", "1990-05-14"), "1990-**-**")
 
 
 if __name__ == "__main__":
