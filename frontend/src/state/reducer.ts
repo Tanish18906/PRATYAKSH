@@ -11,7 +11,7 @@ import {
 } from '../types/contract';
 import type { sendCanaryAlert } from '../api/client';
 
-export type ActiveTab = 'origin' | 'containment' | 'benchmark' | 'report' | 'audit';
+export type ActiveTab = 'investigation' | 'origin' | 'report' | 'audit' | 'benchmark';
 
 export interface ControlsState {
   archetype: Archetype;
@@ -64,7 +64,7 @@ export const initialState: AppState = {
   reportHtml: null,
   canaryAlert: null,
   selectedPathId: null,
-  activeTab: 'origin',
+  activeTab: 'investigation',
   offlineReplay: false,
   busy: false,
   busyMessage: null,
@@ -147,7 +147,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         reportHtml: null,
         canaryAlert: null,
         selectedPathId: topPathId,
-        activeTab: 'origin',
+        activeTab: 'investigation',
       };
     }
 

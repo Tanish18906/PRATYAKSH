@@ -1,212 +1,166 @@
-// HypothesisPanel component
-// Follows UI_UX_DESIGN.md section 5.5 and FRONTEND.md section 5
+// Right rail: ranked routes, then "Why we think so" for the selected route (UI_LAYOUT.md section 2)
 
 import React from 'react';
-import { Hypothesis } from '../types/contract';
-import { formatNumber, formatProbability, formatUtcShort } from '../utils/format';
+import { Evidence, Hypothesis } from '../types/contract';
+import { formatNumber } from '../utils/format';
+import { displayName, formatDay, NameSource, prettyIds, wholePercent } from '../utils/names';
+import { routeStops, whyBullets } from '../utils/answer';
 
 const LIKELIHOOD_TIP = 'A score normalized across candidate paths. It is not a calibrated probability.';
+
+const DOT: Record<Evidence['kind'], string> = {
+  fingerprint: 'bg-ok',
+  observed: 'bg-observed',
+  inferred: 'bg-inferred',
+  anomaly: 'bg-leak',
+};
+
+const KIND_LABEL: Record<Evidence['kind'], string> = {
+  fingerprint: 'Fingerprint',
+  observed: 'Observed',
+  inferred: 'Inferred',
+  anomaly: 'Unusual volume',
+};
 
 interface HypothesisPanelProps {
   hypotheses: Hypothesis[];
   selectedPathId: string | null;
   onSelectPath: (pathId: string) => void;
+  names?: NameSource | null;
+  busy?: boolean;
 }
 
 export const HypothesisPanel: React.FC<HypothesisPanelProps> = ({
   hypotheses,
   selectedPathId,
   onSelectPath,
+  names,
+  busy = false,
 }) => {
   if (!hypotheses || hypotheses.length === 0) {
     return (
-      <div className="bg-surface rounded-lg border border-border p-6 text-center text-text-muted">
-        <p className="text-xs">No trace available. Export the simulated leak and run a trace.</p>
-      </div>
+      <section aria-label="Ranked routes" aria-busy={busy} className="rounded-card border border-line bg-surface p-4">
+        {busy ? (
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => <div key={i} className="skeleton h-12" />)}
+          </div>
+        ) : (
+          <p className="text-sm text-ink-3">Ranked routes appear here after a trace.</p>
+        )}
+      </section>
     );
   }
 
+  const rows = hypotheses.slice(0, 3);
+  const selected = hypotheses.find((h) => h.path_id === selectedPathId) ?? hypotheses[0];
+
+  // Arrow keys move the selection between rows
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const i = Math.max(0, rows.findIndex((h) => h.path_id === selected.path_id));
+    const next = rows[(i + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length];
+    onSelectPath(next.path_id);
+    document.getElementById(`route-row-${next.rank}`)?.focus();
+  };
+
   return (
-    <div className="flex flex-col space-y-3">
-      <div className="flex items-center justify-between pb-2 border-b border-border">
-        <div>
-          <h2 className="text-sm font-bold uppercase tracking-wider text-text-primary">
-            Ranked hypotheses
-          </h2>
-          <span className="text-[11px] text-text-muted block">
-            Rankings express relative likelihood, not a finding of responsibility.
-          </span>
+    <>
+      <section aria-label="Ranked routes" className="shrink-0 rounded-card border border-line bg-surface">
+        <div className="flex items-baseline justify-between px-4 pb-2 pt-3">
+          <h2 className="text-sm font-semibold text-ink">Likely routes</h2>
+          <span className="text-xs text-ink-3" title={LIKELIHOOD_TIP}>relative likelihood</span>
         </div>
-        <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-surface-raised border border-border text-text-secondary">
-          {hypotheses.length} Candidates
-        </span>
-      </div>
-
-      <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
-        {hypotheses.map((hyp) => {
-          const isSelected = selectedPathId === hyp.path_id;
-
-          return (
-            <div
-              key={hyp.path_id}
-              onClick={() => onSelectPath(hyp.path_id)}
-              className={`p-3.5 rounded-lg border transition-all cursor-pointer ${
-                isSelected
-                  ? 'bg-surface-raised border-accent shadow-md shadow-accent/5 ring-1 ring-accent'
-                  : 'bg-surface border-border hover:bg-surface-raised/70'
-              }`}
-            >
-              {/* Card Header: Rank, Likelihood, Path ID */}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-2">
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold font-mono ${
-                      hyp.rank === 1
-                        ? 'bg-accent text-background'
-                        : 'bg-surface-raised border border-border text-text-secondary'
-                    }`}
-                  >
-                    #{hyp.rank}
-                  </span>
-                  <span className="text-xs font-mono font-bold text-text-primary">
-                    {hyp.path_id}
-                  </span>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-xs font-mono font-bold text-accent">
-                    {formatProbability(hyp.probability)}
-                  </span>
-                  <span className="text-[10px] text-text-muted block" title={LIKELIHOOD_TIP}>
-                    Relative likelihood
-                  </span>
-                </div>
-              </div>
-
-              {/* Likelihood Bar */}
-              <div className="w-full bg-surface-raised h-1.5 rounded-full overflow-hidden mb-3 border border-border">
-                <div
-                  className="bg-accent h-full transition-all duration-300"
-                  style={{ width: `${hyp.probability * 100}%` }}
-                ></div>
-              </div>
-
-              {/* Plain-English Summary */}
-              <p className="text-xs text-text-primary mb-3 leading-relaxed font-sans">
-                {hyp.summary_text}
-              </p>
-
-              {/* Origin Artifact Tag */}
-              <div className="mb-3 text-[11px] font-mono flex items-center space-x-1.5 bg-surface/80 p-1.5 rounded border border-border">
-                <span className="text-text-muted">Origin:</span>
-                <span className="text-inferred font-semibold">{hyp.origin_artifact}</span>
-                <span className="text-text-muted">• Actors:</span>
-                <span className="text-text-secondary">{hyp.actors.join(', ')}</span>
-              </div>
-
-              {isSelected && (
-                <ol className="mb-3 space-y-1 text-[11px] font-mono">
-                  {hyp.hops.map((hop, i) => (
-                    <li
-                      key={i}
-                      className={`p-1.5 rounded border ${
-                        hop.kind === 'inferred' ? 'border-dashed border-inferred/50' : 'border-border'
-                      }`}
-                    >
-                      <div className="text-text-primary">
-                        {hop.from_loc} → {hop.to_loc}
-                      </div>
-                      <div className="text-text-muted">
-                        <span className={hop.kind === 'inferred' ? 'text-inferred font-semibold' : 'text-success'}>
-                          {hop.kind === 'inferred' ? 'Inferred' : 'Observed'}
-                        </span>
-                        {' · '}
-                        {hop.actor} · {formatUtcShort(hop.ts)}
-                        {hop.action && ` · ${hop.action}`}
-                        {hop.rows !== null && ` · ${formatNumber(hop.rows)} rows`}
-                      </div>
-                      {hop.kind === 'inferred' && (
-                        <div className="text-inferred">
-                          {hop.est_loss !== null
-                            ? `Log missing. Estimated loss: ${Math.round(hop.est_loss * 100)}%.`
-                            : 'Log missing.'}
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              )}
-
-              {/* Evidence Items */}
-              {hyp.evidence && hyp.evidence.length > 0 && (
-                <div className="space-y-1.5 pt-2 border-t border-border">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted block">
-                    Evidence
-                  </span>
-                  <div className="space-y-1">
-                    {hyp.evidence.map((ev, evIdx) => {
-                      const getBadgeColor = (kind: string) => {
-                        switch (kind) {
-                          case 'observed':
-                            return 'bg-success/20 text-success border-success/30';
-                          case 'inferred':
-                            return 'bg-inferred/20 text-inferred border-inferred/30';
-                          case 'anomaly':
-                            return 'bg-danger/20 text-danger border-danger/30';
-                          case 'fingerprint':
-                            return 'bg-accent/20 text-accent border-accent/30';
-                          default:
-                            return 'bg-surface-raised text-text-secondary border-border';
-                        }
-                      };
-
-                      return (
-                        <div
-                          key={evIdx}
-                          className="flex items-start space-x-2 text-[11px] bg-surface-raised/40 p-1.5 rounded"
-                        >
-                          <span
-                            className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase border mt-0.5 shrink-0 ${getBadgeColor(
-                              ev.kind
-                            )}`}
-                          >
-                            {ev.kind}
-                          </span>
-                          <span className="flex-1 text-text-secondary text-[11px] leading-tight">
-                            {ev.text}
-                          </span>
-                          {ev.ts && (
-                            <span className="text-[10px] font-mono text-text-muted shrink-0">
-                              {formatUtcShort(ev.ts)}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
+        <div role="listbox" aria-label="Likely routes" onKeyDown={onKeyDown} className="divide-y divide-line border-t border-line">
+          {rows.map((h) => {
+            const isSel = h.path_id === selected.path_id;
+            // "!" so the left border colour beats the list's divide-line colour
+            return (
               <button
+                key={h.path_id}
+                id={`route-row-${h.rank}`}
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectPath(hyp.path_id);
-                }}
-                aria-pressed={isSelected}
-                className={`mt-3 w-full px-2 py-1 rounded text-[11px] font-semibold border ${
-                  isSelected
-                    ? 'bg-accent/15 text-accent border-accent/40'
-                    : 'bg-surface-raised text-text-secondary border-border hover:text-text-primary'
-                }`}
+                role="option"
+                aria-selected={isSel}
+                tabIndex={isSel ? 0 : -1}
+                onClick={() => onSelectPath(h.path_id)}
+                className={`block w-full border-l-[3px] px-4 py-2.5 text-left transition-colors duration-150 ${
+                  isSel ? '!border-l-accent bg-accent-tint' : '!border-l-transparent hover:bg-surface-2'
+                } ${h.rank === rows.length ? 'rounded-b-card' : ''}`}
               >
-                {isSelected ? 'Path selected' : 'Select path'}
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="truncate text-sm font-semibold text-ink">
+                    <span className="mr-1.5 text-ink-3 tabular">#{h.rank}</span>
+                    {h.actors.map((a) => displayName(a, names)).join(' and ')}
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold text-ink tabular">{wholePercent(h.probability)}</span>
+                </div>
+                <div className="mt-0.5 truncate text-xs text-ink-3">
+                  {routeStops(h).slice(1).map((l) => displayName(l, names)).join(' → ')}
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-line" aria-hidden="true">
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${h.probability * 100}%` }} />
+                </div>
               </button>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section aria-label="Why we think so" className="shrink-0 rounded-card border border-line bg-surface p-4">
+        <h2 className="text-sm font-semibold text-ink">Why we think so</h2>
+        <ul className="mt-3 space-y-3">
+          {whyBullets(selected).map((ev, i) => (
+            <li key={i} className="flex gap-2.5">
+              <span className={`mt-[5px] h-2 w-2 shrink-0 rounded-full ${DOT[ev.kind]}`} aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className={`text-xs font-medium ${ev.kind === 'inferred' ? 'text-inferred-text' : 'text-ink-2'}`}>
+                    {KIND_LABEL[ev.kind]}
+                  </span>
+                  {ev.ts && <span className="shrink-0 text-xs text-ink-3 tabular">{formatDay(ev.ts)}</span>}
+                </div>
+                <p className="text-sm leading-[21px] text-ink">{prettyIds(ev.text, names)}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <details className="mt-3 border-t border-line pt-2">
+          <summary className="text-[13px] font-medium text-accent">Details</summary>
+          <div className="mt-2 space-y-2 font-mono text-xs text-ink-2">
+            <p>
+              {selected.path_id} · origin {selected.origin_artifact} · actors {selected.actors.join(', ')}
+            </p>
+            <p>
+              score {selected.score} · origin_fit {selected.score_parts.origin_fit} · path_cost {selected.score_parts.path_cost} · anomaly{' '}
+              {selected.score_parts.anomaly}
+            </p>
+            <p className="font-sans text-[13px] text-ink">{selected.summary_text}</p>
+            <ol className="space-y-1">
+              {selected.hops.map((hop, i) => (
+                <li key={i}>
+                  {hop.from_loc} → {hop.to_loc} · {hop.kind} · {hop.actor}
+                  {hop.event_id && ` · ${hop.event_id}`}
+                  {hop.action && ` · ${hop.action}`}
+                  {hop.rows !== null && ` · ${formatNumber(hop.rows)} rows`}
+                  {hop.est_loss !== null && ` · est. loss ${Math.round(hop.est_loss * 100)}%`}
+                  {hop.note && ` · ${hop.note}`}
+                </li>
+              ))}
+            </ol>
+            <ul className="space-y-1">
+              {selected.evidence.map((ev, i) => (
+                <li key={i}>
+                  [{ev.kind}] {ev.text}
+                  {ev.event_id && ` (${ev.event_id})`}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      </section>
+    </>
   );
 };
 

@@ -1,22 +1,25 @@
-// Main App Component for PUGMARK
-// Follows UI_UX_DESIGN.md section 4 & 5 and FRONTEND.md section 4
+// PUGMARK app shell: header, Investigation grid, secondary tabs, Scenario drawer and dialogs
+// Layout follows docs/ui-REDESIGN/UI_LAYOUT.md; behaviour follows docs/ui-REDESIGN/UX_FLOW.md
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { AppProvider, useApp } from './state/AppContext';
 import Header from './components/Header';
 import ScenarioControls from './components/ScenarioControls';
 import IncidentPanel from './components/IncidentPanel';
+import AnswerBanner from './components/AnswerBanner';
 import ProvenanceGraph from './components/ProvenanceGraph';
 import HypothesisPanel from './components/HypothesisPanel';
-import OriginMatchTab from './components/OriginMatchTab';
 import ContainmentTab from './components/ContainmentTab';
+import OriginMatchTab from './components/OriginMatchTab';
 import BenchmarkTab from './components/BenchmarkTab';
 import ReportTab from './components/ReportTab';
 import AuditTab from './components/AuditTab';
 import RevealDialog from './components/RevealDialog';
 import InjectDialog from './components/InjectDialog';
 import ErrorMessage from './components/ErrorMessage';
-import { ActiveTab } from './state/reducer';
+import { prettyIds } from './utils/names';
+
+const FOOTER = 'Simulated data. Rankings are relative likelihoods, not a finding of responsibility.';
 
 const Dashboard: React.FC = () => {
   const {
@@ -58,42 +61,129 @@ const Dashboard: React.FC = () => {
     injectDialogOpen,
   } = state;
 
-  const hasTraced = Boolean(trace && trace.hypotheses.length > 0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const scenarioButtonRef = useRef<HTMLButtonElement | null>(null);
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    scenarioButtonRef.current?.focus();
+  };
 
-  const tabs: Array<{ id: ActiveTab; label: string; badge?: number | string }> = [
-    {
-      id: 'origin',
-      label: 'Origin match',
-      badge: trace?.origin_candidates.length,
-    },
-    {
-      id: 'containment',
-      label: 'Containment',
-      badge: trace?.chokepoints.length,
-    },
-    {
-      id: 'benchmark',
-      label: 'Benchmark',
-    },
-    {
-      id: 'report',
-      label: 'Report',
-      badge: reportHtml ? 'Ready' : undefined,
-    },
-    {
-      id: 'audit',
-      label: 'Audit',
-      badge: auditEntries.length > 0 ? auditEntries.length : undefined,
-    },
-  ];
+  const hypotheses = trace?.hypotheses || [];
+  const sample = leakSample || scenario?.leak_sample || null;
+  const caseName = scenario ? `${scenario.company}, case ${scenario.leak_sample.id.split(':').pop()}` : null;
+  // Stage dots: 1 Discover, 2 Match (exporting), 3 Trace (engine running), 4 Act (result shown)
+  const stage = trace ? 4 : busy && busyMessage?.startsWith('Tracing') ? 3 : busy && busyMessage?.startsWith('Exporting') ? 2 : scenario ? 1 : 0;
+
+  const jumpTo = (target: 'cut' | 'collect') => {
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById(`card-${target}`)?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+  };
+
+  const tabPanel = (children: React.ReactNode) => (
+    <div role="tabpanel" aria-labelledby={`tab-${activeTab}`} className="h-full overflow-y-auto p-4">
+      <div className="mx-auto max-w-[1280px] space-y-4">
+        <ErrorMessage message={error} onDismiss={dismissError} />
+        {children}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-background text-text-primary flex flex-col font-sans select-text">
-      {/* 1. Header */}
-      <Header offlineReplay={offlineReplay} simulated={true} />
+    <div className="flex h-screen flex-col overflow-hidden bg-bg text-ink">
+      <Header
+        offlineReplay={offlineReplay}
+        simulated
+        caseName={caseName}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onOpenScenario={() => setDrawerOpen(true)}
+        scenarioButtonRef={scenarioButtonRef}
+      />
 
-      {/* 2. Top Bar Controls */}
+      <main className="min-h-0 flex-1">
+        {activeTab === 'investigation' ? (
+          <div
+            role="tabpanel"
+            aria-labelledby="tab-investigation"
+            className="grid h-full grid-cols-1 gap-4 overflow-y-auto p-4 pb-2 xl:grid-cols-[264px_minmax(0,1fr)_320px] xl:overflow-hidden wide:grid-cols-[320px_minmax(0,1fr)_380px]"
+          >
+            <div className="min-h-0">
+              <IncidentPanel
+                scenario={scenario}
+                leakSample={leakSample}
+                hasTraced={hypotheses.length > 0}
+                offlineReplay={offlineReplay}
+                busy={busy}
+                onReveal={(rIdx, field, val) => openRevealDialog(rIdx, field, val)}
+                onExportAndTrace={handleExportAndTrace}
+              />
+            </div>
+
+            <div className="flex min-h-[560px] flex-col gap-3 xl:min-h-0">
+              <ErrorMessage message={error} onDismiss={dismissError} />
+              <AnswerBanner trace={trace} names={scenario} busy={busy} onJump={jumpTo} />
+              <div className="min-h-0 flex-1">
+                <ProvenanceGraph
+                  graph={trace?.graph || null}
+                  hypotheses={hypotheses}
+                  selectedPathId={selectedPathId}
+                  onSelectPath={setSelectedPath}
+                  names={scenario}
+                  leak={sample ? { location: sample.found_at, found_ts: sample.found_ts } : null}
+                  busy={busy}
+                  stage={stage}
+                />
+              </div>
+            </div>
+
+            <div className="flex min-h-0 flex-col gap-4 xl:overflow-y-auto">
+              <HypothesisPanel
+                hypotheses={hypotheses}
+                selectedPathId={selectedPathId}
+                onSelectPath={setSelectedPath}
+                names={scenario}
+                busy={busy}
+              />
+              {trace && (
+                <ContainmentTab
+                  chokepoints={trace.chokepoints}
+                  recommendedEvidence={trace.recommended_evidence}
+                  originPinned={trace.origin_pinned}
+                  canaryHits={sample?.canary_hits || []}
+                  canaryAlert={canaryAlert}
+                  busy={busy}
+                  offlineReplay={offlineReplay}
+                  onCanaryAlert={handleCanaryAlert}
+                  names={scenario}
+                />
+              )}
+            </div>
+          </div>
+        ) : activeTab === 'origin' ? (
+          tabPanel(<OriginMatchTab candidates={trace?.origin_candidates || []} names={scenario} />)
+        ) : activeTab === 'report' ? (
+          tabPanel(
+            <ReportTab
+              trace_id={trace?.trace_id || null}
+              reportHtml={reportHtml}
+              busy={busy}
+              offlineReplay={offlineReplay}
+              onDownload={handleDownloadReport}
+              summary={hypotheses[0] ? prettyIds(hypotheses[0].summary_text, scenario) : null}
+            />
+          )
+        ) : activeTab === 'audit' ? (
+          tabPanel(<AuditTab entries={auditEntries} />)
+        ) : (
+          tabPanel(<BenchmarkTab benchmark={benchmark} busy={busy} offlineReplay={offlineReplay} onRun={handleRunBenchmark} />)
+        )}
+      </main>
+
+      <footer className="shrink-0 px-4 pb-2 text-xs text-ink-3">{FOOTER}</footer>
+
       <ScenarioControls
+        open={drawerOpen}
+        onClose={closeDrawer}
         scenario={scenario}
         controls={controls}
         busy={busy}
@@ -108,126 +198,6 @@ const Dashboard: React.FC = () => {
         }}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 p-4 lg:p-6 space-y-6 max-w-[1720px] mx-auto w-full">
-        {/* Error Alert */}
-        <ErrorMessage message={error} onDismiss={dismissError} />
-
-        {/* 3. Three-Column Investigation Workspace */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Left Column: Incident Panel (approx 25% = 3 cols) */}
-          <div className="lg:col-span-3">
-            <IncidentPanel
-              scenario={scenario}
-              leakSample={leakSample}
-              hasTraced={hasTraced}
-              offlineReplay={offlineReplay}
-              busy={busy}
-              onReveal={(rIdx, field, val) => openRevealDialog(rIdx, field, val)}
-              onExportAndTrace={handleExportAndTrace}
-            />
-          </div>
-
-          {/* Center Column: Provenance Graph (approx 50% = 6 cols) */}
-          <div className="lg:col-span-6 flex flex-col">
-            <div className="flex-1 min-h-[480px]">
-              <ProvenanceGraph
-                graph={trace?.graph || null}
-                hypotheses={trace?.hypotheses || []}
-                selectedPathId={selectedPathId}
-                onSelectPath={setSelectedPath}
-              />
-            </div>
-          </div>
-
-          {/* Right Column: Ranked Hypotheses (approx 25% = 3 cols) */}
-          <div className="lg:col-span-3">
-            <HypothesisPanel
-              hypotheses={trace?.hypotheses || []}
-              selectedPathId={selectedPathId}
-              onSelectPath={setSelectedPath}
-            />
-          </div>
-        </div>
-
-        {/* 4. Investigation Tabs Section */}
-        <div className="bg-surface rounded-lg border border-border overflow-hidden shadow-sm">
-          {/* Tab Navigation Header */}
-          <div className="flex border-b border-border bg-surface-raised px-4 pt-2 space-x-1 overflow-x-auto">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2.5 text-xs font-semibold rounded-t-md transition-colors flex items-center space-x-2 border-t-2 ${
-                    isActive
-                      ? 'bg-surface text-accent border-accent shadow-xs'
-                      : 'text-text-muted hover:text-text-primary border-transparent hover:bg-surface/50'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  {tab.badge !== undefined && (
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                        isActive
-                          ? 'bg-accent-dark text-accent'
-                          : 'bg-surface text-text-muted border border-border'
-                      }`}
-                    >
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Tab Content Panel */}
-          <div className="p-4 lg:p-6 bg-surface min-h-[300px]">
-            {activeTab === 'origin' && (
-              <OriginMatchTab candidates={trace?.origin_candidates || []} />
-            )}
-
-            {activeTab === 'containment' && (
-              <ContainmentTab
-                chokepoints={trace?.chokepoints || []}
-                recommendedEvidence={trace?.recommended_evidence || []}
-                originPinned={Boolean(trace?.origin_pinned)}
-                canaryHits={leakSample?.canary_hits || []}
-                canaryAlert={canaryAlert}
-                busy={busy}
-                offlineReplay={offlineReplay}
-                onCanaryAlert={handleCanaryAlert}
-              />
-            )}
-
-            {activeTab === 'benchmark' && (
-              <BenchmarkTab
-                benchmark={benchmark}
-                busy={busy}
-                offlineReplay={offlineReplay}
-                onRun={handleRunBenchmark}
-              />
-            )}
-
-            {activeTab === 'report' && (
-              <ReportTab
-                trace_id={trace?.trace_id || null}
-                reportHtml={reportHtml}
-                busy={busy}
-                offlineReplay={offlineReplay}
-                onDownload={handleDownloadReport}
-              />
-            )}
-
-            {activeTab === 'audit' && <AuditTab entries={auditEntries} />}
-          </div>
-        </div>
-      </main>
-
-      {/* 5. Modals & Dialogs */}
       {revealDialog && (
         <RevealDialog
           open={revealDialog.open}
@@ -253,25 +223,20 @@ const Dashboard: React.FC = () => {
         />
       )}
 
-      {/* Busy Spinner Overlay */}
-      {busy && (
-        <div className="fixed bottom-6 right-6 z-50 bg-surface-raised border border-accent/40 rounded-lg px-4 py-3 shadow-2xl flex items-center space-x-3">
-          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-xs font-mono font-medium text-text-primary">
-            {busyMessage || 'Processing forensic operation...'}
-          </span>
+      {busy && busyMessage && (
+        <div role="status" aria-live="polite" className="fixed bottom-8 right-4 z-30 flex items-center gap-2.5 rounded-ctl border border-line bg-surface px-3 py-2 text-[13px] text-ink-2 shadow-pop">
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-accent border-t-transparent" aria-hidden="true" />
+          {busyMessage}
         </div>
       )}
     </div>
   );
 };
 
-export const App: React.FC = () => {
-  return (
-    <AppProvider>
-      <Dashboard />
-    </AppProvider>
-  );
-};
+export const App: React.FC = () => (
+  <AppProvider>
+    <Dashboard />
+  </AppProvider>
+);
 
 export default App;

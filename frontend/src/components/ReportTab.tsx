@@ -1,7 +1,7 @@
-// ReportTab component
-// Follows UI_UX_DESIGN.md section 5.9 and FRONTEND.md section 15
+// Report: paper-style preview on the left, Download and Copy summary on the right (UI_LAYOUT.md section 5)
 
-import React from 'react';
+import React, { useState } from 'react';
+import Icon from './Icon';
 
 interface ReportTabProps {
   trace_id: string | null;
@@ -9,6 +9,7 @@ interface ReportTabProps {
   busy: boolean;
   offlineReplay: boolean;
   onDownload: () => void;
+  summary?: string | null;
 }
 
 export const ReportTab: React.FC<ReportTabProps> = ({
@@ -17,58 +18,70 @@ export const ReportTab: React.FC<ReportTabProps> = ({
   busy,
   offlineReplay: _offlineReplay,
   onDownload,
+  summary,
 }) => {
+  const [copied, setCopied] = useState(false);
+
   if (!reportHtml) {
     return (
-      <div className="p-8 text-center text-text-muted space-y-2">
-        <span className="text-3xl block">📄</span>
-        <h3 className="text-lg font-semibold text-text-primary">Incident report</h3>
-        <p className="text-sm">
-          {busy ? 'Loading incident report...' : trace_id
-            ? 'The incident report could not be loaded.'
-            : 'No trace available. Export the simulated leak and run a trace.'}
+      <div className="rounded-card border border-line bg-surface p-8 text-center">
+        <Icon name="document" size={20} className="mx-auto text-ink-3" />
+        <p className="mt-2 text-sm text-ink-2">
+          {busy
+            ? 'Loading incident report...'
+            : trace_id
+              ? 'The incident report could not be loaded.'
+              : 'The incident report appears here after Export and trace.'}
         </p>
       </div>
     );
   }
 
+  const copy = async () => {
+    if (!summary) return;
+    try {
+      await navigator.clipboard.writeText(summary);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Action Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">
-            Incident report
-          </h3>
-          <p className="text-sm text-text-muted font-mono">
-            Trace ID: {trace_id || 'N/A'} • Sandboxed Preview
-          </p>
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="h-[calc(100vh-140px)] min-h-[420px] overflow-hidden rounded-card border border-line bg-surface">
+        <iframe srcDoc={reportHtml} title="Incident report preview" sandbox="" className="h-full w-full border-0" />
+      </div>
+
+      <aside className="space-y-3">
+        <div className="rounded-card border border-line bg-surface p-4">
+          <h2 className="text-sm font-semibold text-ink">Incident report</h2>
+          <p className="mt-0.5 text-[13px] text-ink-3">A ranked set of hypotheses for a human investigator.</p>
+          <div className="mt-3 space-y-2">
+            <button
+              type="button"
+              onClick={onDownload}
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-ctl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover"
+            >
+              <Icon name="download" /> Download
+            </button>
+            <button
+              type="button"
+              onClick={copy}
+              disabled={!summary}
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-ctl border border-line-strong bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-2 disabled:opacity-50"
+            >
+              <Icon name={copied ? 'check' : 'copy'} /> {copied ? 'Copied' : 'Copy summary'}
+            </button>
+          </div>
         </div>
-
-        <button
-          type="button"
-          onClick={onDownload}
-          className="px-3.5 py-1.5 rounded bg-accent hover:bg-accent/90 text-background font-bold text-sm flex items-center space-x-1.5 shadow-md transition-colors"
-        >
-          <span>⬇️</span>
-          <span>Download report</span>
-        </button>
-      </div>
-
-      {/* Sandboxed Iframe Preview */}
-      <div className="bg-white rounded-lg border border-border overflow-hidden h-96 shadow-md">
-        <iframe
-          srcDoc={reportHtml}
-          title="Incident Report Preview"
-          sandbox=""
-          className="w-full h-full border-0"
-        />
-      </div>
-
-      {/* Mandatory Statutory Disclaimer */}
-      <div className="p-3 bg-surface rounded border border-border text-center text-sm text-text-muted font-medium">
-        Verify current legal timelines with counsel.
-      </div>
+        <p className="rounded-card border border-line bg-surface p-4 text-[13px] text-ink-2">Verify current legal timelines with counsel.</p>
+        <details className="px-1 text-xs text-ink-3">
+          <summary className="text-[13px] font-medium text-accent">Details</summary>
+          <p className="mt-1 font-mono">{trace_id} · sandboxed preview</p>
+        </details>
+      </aside>
     </div>
   );
 };

@@ -1,36 +1,28 @@
-// StatusBadge presentation component
-// Follows docs/FRONTEND.md section 5
+// Chip: 24px, tinted background with matching text (UI_LAYOUT.md section 4)
 
 import React from 'react';
 
 interface StatusBadgeProps {
   label: string;
-  kind?: 'simulated' | 'offline' | 'status' | 'danger' | 'success';
+  kind?: 'simulated' | 'offline' | 'status' | 'danger' | 'success' | 'accent';
+  className?: string;
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ label, kind = 'simulated' }) => {
-  const getStyle = () => {
-    switch (kind) {
-      case 'simulated':
-        return 'bg-accent-dark/80 text-accent border border-accent/40 font-bold';
-      case 'offline':
-        return 'bg-danger/20 text-danger border border-danger/40 font-bold';
-      case 'status':
-        return 'bg-surface-raised text-text-secondary border border-border';
-      case 'danger':
-        return 'bg-danger/20 text-danger border border-danger/40';
-      case 'success':
-        return 'bg-success/20 text-success border border-success/40';
-      default:
-        return 'bg-surface-raised text-text-secondary border border-border';
-    }
-  };
-
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs tracking-wider uppercase ${getStyle()}`}>
-      {label}
-    </span>
-  );
+const STYLE: Record<NonNullable<StatusBadgeProps['kind']>, string> = {
+  simulated: 'bg-inferred-tint text-inferred-text uppercase',
+  offline: 'bg-line text-ink uppercase',
+  status: 'bg-surface-2 text-ink-2 border border-line',
+  danger: 'bg-leak-tint text-leak',
+  success: 'bg-ok-tint text-ok',
+  accent: 'bg-accent-tint text-accent',
 };
+
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ label, kind = 'simulated', className = '' }) => (
+  <span
+    className={`inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-xs font-medium ${STYLE[kind]} ${className}`}
+  >
+    {label}
+  </span>
+);
 
 export default StatusBadge;

@@ -1,4 +1,5 @@
 /** @type {import('tailwindcss').Config} */
+// Colours map to the CSS variables in src/index.css (docs/ui-REDESIGN/DESIGN_SYSTEM.md)
 export default {
   content: [
     "./index.html",
@@ -7,30 +8,39 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#091119',
-        surface: {
-          DEFAULT: '#121D27',
-          raised: '#192733',
-          hover: '#233442',
-        },
-        border: '#344754',
-        text: {
-          primary: '#F2F7FA',
-          secondary: '#B9C8D2',
-          muted: '#95AAB8',
-        },
-        accent: {
-          DEFAULT: '#5EEAD4',
-          dark: '#164F4C',
-        },
-        inferred: '#F5B95C',
-        danger: '#F28B82',
-        success: '#7FD6AA',
-        focus: '#A8FFF0',
+        bg: 'var(--bg)',
+        surface: 'var(--surface)',
+        'surface-2': 'var(--surface-2)',
+        line: 'var(--line)',
+        'line-strong': 'var(--line-strong)',
+        ink: 'var(--ink)',
+        'ink-2': 'var(--ink-2)',
+        'ink-3': 'var(--ink-3)',
+        accent: 'var(--accent)',
+        'accent-hover': 'var(--accent-hover)',
+        'accent-tint': 'var(--accent-tint)',
+        observed: 'var(--observed)',
+        inferred: 'var(--inferred)',
+        'inferred-text': 'var(--inferred-text)',
+        'inferred-tint': 'var(--inferred-tint)',
+        leak: 'var(--leak)',
+        'leak-tint': 'var(--leak-tint)',
+        ok: 'var(--ok)',
+        'ok-tint': 'var(--ok-tint)',
       },
       fontFamily: {
-        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
-        mono: ['ui-monospace', 'SFMono-Regular', 'Consolas', 'monospace'],
+        sans: ['ui-sans-serif', 'system-ui', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
+      },
+      borderRadius: {
+        card: 'var(--radius)',
+        ctl: 'var(--radius-sm)',
+      },
+      boxShadow: {
+        pop: 'var(--shadow-pop)',
+      },
+      screens: {
+        wide: '1600px',
       },
     },
   },

@@ -1,7 +1,7 @@
-// ErrorMessage presentation component
-// Follows docs/FRONTEND.md section 5
+// Inline, calm error: one line and a dismiss button (UX_FLOW.md section 4)
 
 import React from 'react';
+import Icon from './Icon';
 
 interface ErrorMessageProps {
   message: string | null;
@@ -12,20 +12,15 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({ message, onDismiss }
   if (!message) return null;
 
   return (
-    <div className="bg-danger/10 border-l-4 border-danger text-text-primary px-4 py-3 rounded mb-4 flex items-center justify-between shadow-md">
-      <div className="flex items-center space-x-3">
-        <span className="text-danger font-bold text-lg">⚠️</span>
-        <div>
-          <p className="text-sm font-semibold text-danger">Investigation Alert</p>
-          <p className="text-xs text-text-secondary">{message}</p>
-        </div>
-      </div>
+    <div role="alert" className="flex shrink-0 items-center gap-2 rounded-card border border-line bg-leak-tint px-3 py-1.5 text-[13px] text-ink">
+      <Icon name="alert" className="shrink-0 text-leak" />
+      <span className="min-w-0 flex-1 truncate">{message}</span>
       <button
+        type="button"
         onClick={onDismiss}
-        className="text-text-muted hover:text-text-primary px-2 py-1 text-sm font-bold"
-        aria-label="Dismiss error"
+        className="h-8 shrink-0 rounded-ctl px-2 text-[13px] font-medium text-accent hover:underline"
       >
-        ✕
+        Dismiss
       </button>
     </div>
   );

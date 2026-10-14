@@ -187,7 +187,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (state.offlineReplay) {
       // In offline replay, demo bundle trace is already available
-      dispatch({ type: 'SET_ACTIVE_TAB', payload: 'origin' });
+      dispatch({ type: 'SET_ACTIVE_TAB', payload: 'investigation' });
       return;
     }
 
@@ -303,7 +303,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       dispatch({ type: 'SET_TRACE', payload: res.trace });
       dispatch({ type: 'SET_CANARY_ALERT', payload: res.alert });
-      dispatch({ type: 'SET_ACTIVE_TAB', payload: 'containment' });
+      dispatch({ type: 'SET_ACTIVE_TAB', payload: 'investigation' });
       await loadReportAndAudit(res.trace);
     } catch (err: unknown) {
       dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The tracing engine could not complete this operation.') });

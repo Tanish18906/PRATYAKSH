@@ -2,23 +2,138 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens: docs/ui-REDESIGN/DESIGN_SYSTEM.md section 2. Canvas/SVG libraries read the hex mirror in src/utils/tokens.ts. */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
+
+  --bg: #F5F3EE;
+  --surface: #FFFFFF;
+  --surface-2: #FAF9F6;
+  --line: #E4E0D6;
+  --line-strong: #C9C4B6;
+
+  --ink: #1C2030;
+  --ink-2: #4A5064;
+  --ink-3: #5F6578;
+
+  --accent: #3D4FD9;
+  --accent-hover: #3848C8;
+  --accent-tint: #ECEEFC;
+  --observed: #2E5E9E;
+  --inferred: #C77700;
+  --inferred-text: #8A5200;
+  --inferred-tint: #FFF3DD;
+  --leak: #C8321F;
+  --leak-tint: #FDECE9;
+  --ok: #1F7A4D;
+  --ok-tint: #E6F4EC;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow-pop: 0 8px 24px rgba(28, 32, 48, 0.12);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+html, body, #root {
+  height: 100%;
 }
 
 body {
   margin: 0;
-  background-color: #091119;
-  color: #F2F7FA;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
 }
 
-button, select, input:not([type="range"]) {
-  min-height: 40px;
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-:focus-visible {
-  outline: 2px solid #A8FFF0;
-  outline-offset: 2px;
+summary {
+  cursor: pointer;
+}
+
+/* Even line breaks: no single-word last lines in paragraphs, balanced headings */
+p, li, dd {
+  text-wrap: pretty;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Faint dot grid behind the graph */
+.dot-grid {
+  background-color: var(--surface);
+  background-image: radial-gradient(var(--line) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--line) 0%, var(--surface-2) 50%, var(--line) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.fade-in {
+  animation: fade-in 250ms var(--ease) both;
+}
+
+/* Opacity only: for elements positioned by an inline transform (graph pills) */
+@keyframes appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.appear {
+  animation: appear 250ms var(--ease) both;
+}
+
+/* Fingerprint match bars fill once (400ms) */
+@keyframes bar-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.bar-fill {
+  transform-origin: left;
+  animation: bar-fill 400ms var(--ease) both;
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+
+.slide-in {
+  animation: slide-in 250ms var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

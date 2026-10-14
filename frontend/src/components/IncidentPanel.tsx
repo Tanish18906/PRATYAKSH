@@ -1,10 +1,11 @@
-// IncidentPanel component
-// Follows UI_UX_DESIGN.md section 5.3 and FRONTEND.md section 5
+// Left rail: the Telegram post, then the incident facts (UI_LAYOUT.md section 2)
 
 import React from 'react';
 import { ScenarioSummary, LeakSample } from '../types/contract';
 import TelegramChat from './TelegramChat';
-import { formatUtcTime, formatNumber } from '../utils/format';
+import { formatNumber } from '../utils/format';
+import { formatDay } from '../utils/names';
+import Icon from './Icon';
 
 interface IncidentPanelProps {
   scenario: ScenarioSummary | null;
@@ -15,6 +16,13 @@ interface IncidentPanelProps {
   onReveal: (rowIndex: number, field: string, currentMaskedValue: string) => void;
   onExportAndTrace: (messageId: number) => void;
 }
+
+const Fact: React.FC<{ label: string; value: React.ReactNode; wide?: boolean }> = ({ label, value, wide }) => (
+  <div className={wide ? 'col-span-2' : undefined}>
+    <dt className="text-xs text-ink-3">{label}</dt>
+    <dd className="mt-0.5 text-base font-semibold text-ink tabular">{value}</dd>
+  </div>
+);
 
 export const IncidentPanel: React.FC<IncidentPanelProps> = ({
   scenario,
@@ -27,8 +35,10 @@ export const IncidentPanel: React.FC<IncidentPanelProps> = ({
 }) => {
   if (!scenario) {
     return (
-      <div className="bg-surface rounded-lg border border-border p-6 text-center text-text-muted">
-        Loading incident context...
+      <div aria-busy="true" className="space-y-3 rounded-card border border-line bg-surface p-4">
+        <div className="skeleton h-5 w-2/3" />
+        <div className="skeleton h-16" />
+        <div className="skeleton h-10" />
       </div>
     );
   }
@@ -36,157 +46,71 @@ export const IncidentPanel: React.FC<IncidentPanelProps> = ({
   const sample = leakSample || scenario.leak_sample;
 
   return (
-    <div className="flex flex-col space-y-4">
-      {/* Incident Header Card */}
-      <div className="bg-surface rounded-lg border border-border p-4 shadow-sm">
-        <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
-          <div>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-text-primary flex items-center space-x-2">
-              <span>Incident Investigation</span>
-            </h2>
-            <p className="text-xs text-text-muted">{scenario.company} • Case #{scenario.id}</p>
-          </div>
-          <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-accent-dark text-accent border border-accent/40">
-            SIMULATED
-          </span>
-        </div>
-
-        {/* Telegram Mock Discovery */}
-        <div className="mb-4">
-          <TelegramChat
-            discovery={scenario.discovery}
-            scenario_id={scenario.id}
-            busy={busy}
-            offlineReplay={offlineReplay}
-            onExportAndTrace={onExportAndTrace}
-          />
-        </div>
-
-        {/* Leak Artifact Properties */}
-        {sample && (
-          <div className="space-y-3 pt-2">
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-surface-raised p-2 rounded border border-border">
-                <span className="text-text-muted block text-[10px] uppercase font-mono">Found Timestamp</span>
-                <span className="font-mono text-text-primary text-[11px]">
-                  {formatUtcTime(sample.found_ts)}
-                </span>
-              </div>
-
-              <div className="bg-surface-raised p-2 rounded border border-border">
-                <span className="text-text-muted block text-[10px] uppercase font-mono">Leaked Records</span>
-                <span className="font-mono font-bold text-accent text-sm">
-                  {formatNumber(sample.row_count)} rows
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-surface-raised p-2 rounded border border-border text-xs">
-              <span className="text-text-muted block text-[10px] uppercase font-mono mb-1">
-                Newest Record Watermark
-              </span>
-              <span className="font-mono text-inferred text-xs font-semibold">
-                {formatUtcTime(sample.newest_record_ts)}
-              </span>
-              <span className="text-[10px] text-text-muted block mt-0.5">
-                (Exports predating this watermark are logically excluded)
-              </span>
-            </div>
-
-            {/* Columns Chips */}
-            <div>
-              <span className="text-text-muted block text-[10px] uppercase font-mono mb-1.5">
-                Observed Columns in Sample
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {sample.columns.map((col) => (
-                  <span
-                    key={col}
-                    className="px-2 py-0.5 rounded bg-surface-raised border border-border text-xs font-mono text-text-secondary"
-                  >
-                    {col}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Format Fingerprint Chips */}
-            <div>
-              <span className="text-text-muted block text-[10px] uppercase font-mono mb-1.5">
-                Format Fingerprint
-              </span>
-              <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
-                <div className="bg-surface-raised px-2 py-1 rounded border border-border flex justify-between">
-                  <span className="text-text-muted">Delimiter:</span>
-                  <span className="text-accent">{sample.format_profile.delimiter === ',' ? 'comma (,)' : sample.format_profile.delimiter}</span>
-                </div>
-                <div className="bg-surface-raised px-2 py-1 rounded border border-border flex justify-between">
-                  <span className="text-text-muted">Quoting:</span>
-                  <span className="text-accent">{sample.format_profile.quoting}</span>
-                </div>
-                <div className="bg-surface-raised px-2 py-1 rounded border border-border flex justify-between">
-                  <span className="text-text-muted">Line Ending:</span>
-                  <span className="text-accent">{sample.format_profile.line_ending}</span>
-                </div>
-                <div className="bg-surface-raised px-2 py-1 rounded border border-border flex justify-between">
-                  <span className="text-text-muted">Encoding:</span>
-                  <span className="text-accent">{sample.format_profile.encoding}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Masked Preview Table */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-text-muted block text-[10px] uppercase font-mono">
-                  Masked Preview (Max 5 Rows)
-                </span>
-                <span className="text-[10px] text-text-muted italic">Click any cell to request reveal</span>
-              </div>
-
-              <div className="overflow-x-auto rounded border border-border">
-                <table className="w-full text-[11px] font-mono text-left bg-surface-raised">
-                  <thead>
-                    <tr className="border-b border-border text-text-muted text-[10px] bg-surface">
-                      {sample.columns.map((c) => (
-                        <th key={c} className="p-2 font-semibold">
-                          {c}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {sample.masked_preview.map((row, rIdx) => (
-                      <tr key={rIdx} className="hover:bg-surface-hover/50">
-                        {sample.columns.map((col) => {
-                          const val = row[col] || '';
-                          return (
-                            <td
-                              key={col}
-                              className="p-1"
-                            >
-                              <button
-                                type="button"
-                                aria-label={`Reveal ${col}, row ${rIdx + 1}`}
-                                disabled={busy || offlineReplay}
-                                onClick={() => onReveal(rIdx, col, val)}
-                                className="p-1 text-left max-w-[120px] truncate hover:text-accent hover:underline disabled:text-text-secondary disabled:cursor-not-allowed"
-                                title={offlineReplay ? 'Reveal unavailable during offline replay' : 'Requires a reason and creates an audit entry.'}
-                              >
-                                {val}
-                              </button>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className="flex max-h-[55%] min-h-0 flex-col">
+        <TelegramChat
+          discovery={scenario.discovery}
+          scenario_id={scenario.id}
+          busy={busy}
+          offlineReplay={offlineReplay}
+          onExportAndTrace={onExportAndTrace}
+        />
       </div>
+
+      {sample && (
+        <section aria-label="Incident facts" className="min-h-0 shrink overflow-y-auto rounded-card border border-line bg-surface p-4">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+            <Fact label="Found" value={formatDay(sample.found_ts)} wide />
+            <Fact label="Leaked records" value={formatNumber(sample.row_count)} />
+            <Fact label="Columns" value={sample.columns.length} />
+            <Fact label="Company" value={scenario.company} wide />
+          </dl>
+
+          <details className="mt-4 border-t border-line pt-3">
+            <summary className="text-[13px] font-medium text-accent">Masked sample ({sample.masked_preview.length} rows)</summary>
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-3">
+              <Icon name="shield" />
+              {offlineReplay
+                ? 'Reveal is unavailable during offline replay.'
+                : 'Values are masked. Reveal needs a reason and writes an audit entry.'}
+            </p>
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-line text-ink-3">
+                    {sample.columns.map((c) => (
+                      <th key={c} className="px-1 py-1.5 font-medium">{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {sample.masked_preview.map((row, rIdx) => (
+                    <tr key={rIdx}>
+                      {sample.columns.map((col) => {
+                        const val = row[col] || '';
+                        return (
+                          <td key={col} className="px-0.5 py-0.5">
+                            <button
+                              type="button"
+                              aria-label={`Reveal ${col}, row ${rIdx + 1}`}
+                              disabled={busy || offlineReplay}
+                              onClick={() => onReveal(rIdx, col, val)}
+                              className="min-h-[28px] max-w-[120px] truncate rounded px-1 text-left text-ink-2 tabular hover:bg-accent-tint hover:text-accent disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-2"
+                              title={offlineReplay ? 'Reveal unavailable during offline replay' : 'Requires a reason and creates an audit entry.'}
+                            >
+                              {val}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </section>
+      )}
     </div>
   );
 };

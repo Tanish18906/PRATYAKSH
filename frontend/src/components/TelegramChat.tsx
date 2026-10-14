@@ -1,10 +1,11 @@
-// TelegramChat component
-// Follows UI_UX_DESIGN.md section 5.2 and FRONTEND.md section 5
+// Telegram card: one surface, channel header, scrolling messages, the file row and the primary action (UI_LAYOUT.md section 2)
 // Strictly SIMULATED. No connection to Telegram.
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Discovery } from '../types/contract';
-import { formatUtcShort, formatNumber, formatBytes } from '../utils/format';
+import { formatNumber, formatBytes } from '../utils/format';
+import { formatDay } from '../utils/names';
+import Icon from './Icon';
 
 interface TelegramChatProps {
   discovery: Discovery;
@@ -22,97 +23,72 @@ export const TelegramChat: React.FC<TelegramChatProps> = ({
   onExportAndTrace,
 }) => {
   const { channel, messages, leak_message_id } = discovery;
+  const listRef = useRef<HTMLOListElement | null>(null);
+  const leakRef = useRef<HTMLLIElement | null>(null);
+
+  // Start with the post that carries the file in view, so Export and trace is visible without scrolling
+  useEffect(() => {
+    if (listRef.current && leakRef.current) listRef.current.scrollTop = leakRef.current.offsetTop; // the list is position: relative, so offsetTop is measured from it
+  }, [leak_message_id]);
 
   return (
-    <div className="bg-surface-raised rounded-lg border border-border flex flex-col overflow-hidden shadow-lg">
-      {/* Header */}
-      <div className="bg-surface px-4 py-3 border-b border-border flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-full bg-accent-dark border border-accent/40 flex items-center justify-center text-accent font-bold text-sm">
-            T
+    <section aria-label="Simulated Telegram channel" className="flex min-h-0 flex-col rounded-card border border-line bg-surface">
+      <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-tint text-accent">
+          <Icon name="send" />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-ink">{channel.name}</div>
+          <div className="truncate text-xs text-ink-3">
+            {channel.handle} · {formatNumber(channel.members)} subscribers
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-semibold text-text-primary">{channel.name}</span>
-              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-accent-dark text-accent border border-accent/30">
-                SIMULATED
-              </span>
-            </div>
-            <div className="text-xs text-text-muted flex items-center space-x-2">
-              <span className="font-mono">{channel.handle}</span>
-              <span>•</span>
-              <span>{formatNumber(channel.members)} subscribers</span>
-            </div>
-          </div>
+          <div className="text-xs text-inferred-text">Simulated channel, no real Telegram connection</div>
         </div>
       </div>
 
-      {/* Messages Feed */}
-      <div className="p-4 space-y-3 max-h-72 overflow-y-auto">
+      <ol ref={listRef} className="relative min-h-0 flex-1 divide-y divide-line overflow-y-auto">
         {messages.map((msg) => {
-          const isLeakAttachment = msg.id === leak_message_id;
-
+          const isLeak = msg.id === leak_message_id;
           return (
-            <div
-              key={msg.id}
-              className={`p-3 rounded-lg border text-xs ${
-                isLeakAttachment
-                  ? 'bg-surface border-accent/30 shadow-sm'
-                  : 'bg-surface/50 border-border'
-              }`}
-            >
-              {/* Message Meta */}
-              <div className="flex items-center justify-between text-text-muted mb-1.5">
-                <span className="font-semibold text-accent font-mono">{msg.sender}</span>
-                <span className="text-[11px] font-mono">{formatUtcShort(msg.ts)}</span>
+            <li key={msg.id} ref={isLeak ? leakRef : undefined} className={`px-4 py-3 ${isLeak ? 'bg-surface-2' : ''}`}>
+              <div className="flex items-baseline justify-between gap-2 text-xs">
+                <span className="font-medium text-ink-2">{msg.sender}</span>
+                <span className="text-ink-3 tabular">{formatDay(msg.ts)}</span>
               </div>
+              <p className="mt-1 text-sm text-ink whitespace-pre-wrap">{msg.text}</p>
 
-              {/* Message Text */}
-              <p className="text-text-primary mb-2 whitespace-pre-wrap">{msg.text}</p>
-
-              {/* Attachment Card */}
               {msg.attachment && (
-                <div className="bg-surface-raised p-3 rounded border border-border mt-2 flex flex-col space-y-2">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 rounded bg-accent-dark/40 border border-accent/30 flex items-center justify-center text-accent text-lg">
-                      📄
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-mono text-xs font-semibold text-text-primary truncate">
-                        {msg.attachment.file_name}
-                      </div>
-                      <div className="text-[11px] text-text-muted flex items-center space-x-2 font-mono">
-                        <span>{formatBytes(msg.attachment.size_bytes)}</span>
-                        <span>•</span>
-                        <span>~{formatNumber(msg.attachment.rows_hint)} rows</span>
+                <div className="mt-3 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-ctl bg-leak-tint text-leak">
+                      <Icon name="document" size={20} />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-ink">{msg.attachment.file_name}</div>
+                      <div className="text-xs text-ink-3 tabular">
+                        {formatBytes(msg.attachment.size_bytes)} · about {formatNumber(msg.attachment.rows_hint)} rows
                       </div>
                     </div>
                   </div>
-
-                  {/* Export and trace action */}
-                  {isLeakAttachment && (
+                  {isLeak && (
                     <button
                       type="button"
                       disabled={busy || offlineReplay}
                       onClick={() => onExportAndTrace(msg.id)}
-                      className="w-full py-2 px-3 rounded bg-accent hover:bg-accent/90 text-background font-bold text-xs flex items-center justify-center space-x-2 transition-colors disabled:opacity-50 mt-1 shadow-md"
+                      title={offlineReplay ? 'Offline replay: the bundled trace is already shown.' : undefined}
+                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-ctl bg-accent px-4 text-sm font-semibold text-white transition-colors duration-150 hover:bg-accent-hover disabled:opacity-50"
                     >
-                      <span>🔍</span>
-                      <span>Export and trace</span>
+                      <Icon name="search" />
+                      Export and trace
                     </button>
                   )}
                 </div>
               )}
-            </div>
+            </li>
           );
         })}
-      </div>
-
-      {/* Footer Disclaimer */}
-      <div className="bg-surface/80 px-4 py-2 border-t border-border text-[11px] text-text-muted text-center italic">
-        Synthetic scenario. No real Telegram connection.
-      </div>
-    </div>
+      </ol>
+    </section>
   );
 };
 

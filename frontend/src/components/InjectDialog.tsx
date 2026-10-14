@@ -3,6 +3,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Actor } from '../types/contract';
+import Icon from './Icon';
 
 interface InjectDialogProps {
   open: boolean;
@@ -61,69 +62,58 @@ export const InjectDialog: React.FC<InjectDialogProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(28,32,48,0.3)] p-4 fade-in">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="inject-title"
         onKeyDown={handleKeyDown}
-        className="bg-surface-raised border border-border rounded-lg max-w-md w-full p-6 shadow-2xl space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-border">
-          <div className="flex items-center space-x-2">
-            <span className="text-xl">⚖️</span>
-            <h3 id="inject-title" className="text-lg font-bold text-text-primary">
-              Inject a SIMULATED leak
-            </h3>
-          </div>
+        className="w-full max-w-[420px] rounded-card bg-surface p-5 shadow-pop">
+        <div className="flex items-center justify-between">
+          <h2 id="inject-title" className="text-base font-semibold text-ink">Inject a simulated leak</h2>
           <button
             type="button"
             onClick={onCancel}
             aria-label="Cancel"
-            className="text-text-muted hover:text-text-primary text-sm font-bold"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-ctl text-ink-3 hover:bg-surface-2 hover:text-ink"
           >
-            ✕
+            <Icon name="x" />
           </button>
         </div>
+        <p className="mt-1 text-[13px] text-ink-2">Pick anyone. A new synthetic scenario leaks through them, and it traces again.</p>
 
-        <p className="text-base text-text-secondary leading-relaxed">
-          A new synthetic leak scenario will be generated using this actor.
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label htmlFor="actor-select" className="block text-sm font-semibold text-text-primary mb-1.5">
-              Choose an actor
-            </label>
+            <label htmlFor="actor-select" className="block text-[13px] font-medium text-ink">Actor</label>
             <select
               id="actor-select"
               value={activeActorId}
               disabled={busy}
               onChange={(e) => setSelectedActor(e.target.value)}
-              className="w-full bg-surface border border-border rounded p-2.5 text-sm text-text-primary focus:border-accent focus:outline-none font-mono"
+              className="mt-1 h-10 w-full rounded-ctl border border-line-strong bg-surface px-3 text-sm text-ink"
             >
               {actors.map((actor) => (
                 <option key={actor.id} value={actor.id}>
-                  {actor.name} ({actor.role} • {actor.team}) [{actor.id}]
+                  {actor.name} ({actor.role}, {actor.team})
                 </option>
               ))}
             </select>
-            {!activeActorId && <p className="text-sm text-text-muted">Select an actor to create a simulated leak.</p>}
+            {!activeActorId && <p className="mt-1 text-[13px] text-ink-3">Select an actor to create a simulated leak.</p>}
           </div>
 
-          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-[13px] text-leak">{error}</p>}
 
-          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-border">
+          <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-sm font-semibold rounded bg-surface hover:bg-surface-hover text-text-secondary border border-border"
+              className="h-10 rounded-ctl border border-line-strong bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-2"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={busy || !activeActorId}
-              className="px-4 py-2 text-base font-bold rounded bg-accent hover:bg-accent/90 text-background shadow-md disabled:opacity-50"
+              className="h-10 rounded-ctl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
             >
-              {busy ? 'Generating synthetic scenario...' : 'Inject leak'}
+              {busy ? 'Generating scenario...' : 'Inject leak'}
             </button>
           </div>
         </form>

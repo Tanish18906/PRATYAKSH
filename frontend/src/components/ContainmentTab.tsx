@@ -1,10 +1,10 @@
-// ContainmentTab component
-// Follows UI_UX_DESIGN.md section 5.7 and FRONTEND.md section 5
+// Action cards for the right rail: where to cut, what to collect next, and the canary check (UI_LAYOUT.md section 2)
 
 import React from 'react';
 import { Chokepoint, EvidenceRequest } from '../types/contract';
-import { formatProbability, formatUtcTime } from '../utils/format';
+import { displayName, formatDay, NameSource, prettyIds, wholePercent } from '../utils/names';
 import type { AppState } from '../state/reducer';
+import Icon from './Icon';
 
 interface ContainmentTabProps {
   chokepoints: Chokepoint[];
@@ -15,7 +15,17 @@ interface ContainmentTabProps {
   busy: boolean;
   offlineReplay: boolean;
   onCanaryAlert: (canary_id: string) => void;
+  names?: NameSource | null;
 }
+
+const CARD = 'shrink-0 scroll-mt-4 rounded-card border border-line bg-surface p-4';
+
+const Title: React.FC<{ icon: 'scissors' | 'search' | 'shield'; children: React.ReactNode }> = ({ icon, children }) => (
+  <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+    <Icon name={icon} className="text-ink-3" />
+    {children}
+  </h2>
+);
 
 export const ContainmentTab: React.FC<ContainmentTabProps> = ({
   chokepoints,
@@ -26,152 +36,100 @@ export const ContainmentTab: React.FC<ContainmentTabProps> = ({
   busy,
   offlineReplay,
   onCanaryAlert,
+  names,
 }) => {
+  const cut = chokepoints[0];
+  const collect = recommendedEvidence[0];
+
   return (
-    <div className="space-y-6">
-      {/* Canary Status Banner */}
-      {originPinned && (
-        <div className="p-4 rounded-lg bg-accent-dark/30 border border-accent/40 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center space-x-3">
-            <span className="text-xl">🎯</span>
-            <div>
-              <span className="text-sm font-bold font-mono text-accent uppercase">
-                Canary Pinned Origin
-              </span>
-              <p className="text-sm text-text-primary">
-                SIMULATED canary match: the backend pinned the origin export. Custody paths remain hypotheses.
-              </p>
-            </div>
-          </div>
-          <span className="px-2 py-0.5 rounded text-sm font-bold bg-accent text-background font-mono">
-            PINNED
-          </span>
-        </div>
-      )}
-
-      {/* Canary Simulation Action (if canaries available) */}
-      {canaryHits.length > 0 && (
-        <div className="p-3 bg-surface rounded border border-border flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-text-secondary">
-            SIMULATED canary hits: <span className="text-accent font-mono">{canaryHits.join(', ')}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => onCanaryAlert(canaryHits[0])}
-            disabled={busy || offlineReplay}
-            className="px-3 py-2 bg-accent/20 hover:bg-accent/30 text-accent border border-accent/40 rounded text-base font-semibold disabled:opacity-50"
-          >
-            Simulate canary alert
-          </button>
-        </div>
-      )}
-
-      {canaryAlert && (
-        <div role="status" className="p-4 rounded border border-accent/40 bg-accent-dark/30 text-base">
-          <p className="font-semibold">SIMULATED canary alert</p>
-          <p>{canaryAlert.message}</p>
-          <p className="text-sm text-text-secondary">
-            {canaryAlert.canary_id} · {canaryAlert.export_id} · {formatUtcTime(canaryAlert.ts)}
-          </p>
-        </div>
-      )}
-
-      {/* Chokepoint Recommendations Card */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-bold text-text-primary">
-              Chokepoint recommendations
-            </h3>
-            <p className="text-sm text-text-muted">
-              Suggested containment actions covering plausible leak paths.
+    <>
+      <section id="card-cut" aria-label="Where to cut" className={CARD}>
+        <Title icon="scissors">Where to cut</Title>
+        {cut ? (
+          <>
+            <p className="mt-2 text-sm leading-[21px] text-ink">{prettyIds(cut.action_text, names)}.</p>
+            <p className="mt-1 text-sm text-ink-2">
+              <span className="text-2xl font-semibold text-ink tabular">{wholePercent(cut.cumulative_coverage)}</span> of likely routes
+              stopped
             </p>
-          </div>
-          <span className="text-sm text-text-muted italic">
-            Advisory recommendations. No changes made to live systems.
-          </span>
-        </div>
-
-        {chokepoints.length === 0 ? (
-          <div className="p-6 rounded bg-surface border border-border text-center text-text-muted text-sm">
-            No containment recommendation is available for this trace.
-          </div>
+            {chokepoints.length > 1 && (
+              <details className="mt-2 border-t border-line pt-2">
+                <summary className="text-[13px] font-medium text-accent">All {chokepoints.length} cut points</summary>
+                <ol className="mt-2 space-y-1.5 text-[13px] text-ink">
+                  {chokepoints.map((cp) => (
+                    <li key={cp.rank} className="flex justify-between gap-3">
+                      <span>{cp.rank}. {prettyIds(cp.action_text, names)}</span>
+                      <span className="shrink-0 text-ink-3 tabular">{wholePercent(cp.cumulative_coverage)}</span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-2 font-mono text-xs text-ink-3">{chokepoints.map((cp) => `${cp.item_type} ${cp.item_id}`).join(' · ')}</p>
+              </details>
+            )}
+            <p className="mt-2 text-xs text-ink-3">Advisory only. Nothing is changed on live systems.</p>
+          </>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {chokepoints.map((cp) => (
-              <div
-                key={cp.rank}
-                className="p-4 rounded-lg bg-surface border border-border flex flex-col justify-between space-y-3 shadow-sm hover:border-accent/40 transition-colors"
-              >
-                <div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                    <span className="w-5 h-5 rounded-full bg-accent text-background text-sm font-bold font-mono flex items-center justify-center">
-                      {cp.rank}
-                    </span>
-                    <span className="text-sm font-mono font-bold text-accent">
-                      Cumulative coverage: {formatProbability(cp.cumulative_coverage)}
-                    </span>
-                  </div>
-
-                  <h4 className="text-base font-semibold text-text-primary mb-1">
-                    {cp.action_text}
-                  </h4>
-                  <div className="text-sm font-mono text-text-muted">
-                    Target: <span className="text-text-secondary">{cp.item_id}</span> ({cp.item_type})
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-border flex flex-wrap items-center justify-between gap-3 text-sm text-text-muted">
-                  <span>Single-action marginal:</span>
-                  <span className="font-mono font-bold text-text-primary">
-                    {formatProbability(cp.marginal)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="mt-2 text-sm text-ink-3">No containment recommendation is available for this trace.</p>
         )}
-      </div>
+      </section>
 
-      {/* Evidence to Collect Card */}
-      {recommendedEvidence.length > 0 && (
-        <div className="space-y-3 pt-4 border-t border-border">
-          <div>
-            <h3 className="text-lg font-bold text-text-primary">
-              Evidence to collect
-            </h3>
-            <p className="text-sm text-text-muted">
-              Recover these logs to help distinguish the candidate paths.
+      <section id="card-collect" aria-label="What to collect next" className={CARD}>
+        <Title icon="search">What to collect next</Title>
+        {collect ? (
+          <>
+            <p className="mt-2 text-sm leading-[21px] text-ink">{prettyIds(collect.request_text, names)}.</p>
+            <p className="mt-1.5 text-sm leading-[21px] text-ink-2">
+              It settles the step from {displayName(collect.hop_ref.from_loc, names)} to {displayName(collect.hop_ref.to_loc, names)},
+              which <span className="font-semibold text-ink tabular">{wholePercent(collect.mass)}</span> of likely routes depend on.
             </p>
-          </div>
+            {recommendedEvidence.length > 1 && (
+              <details className="mt-2 border-t border-line pt-2">
+                <summary className="text-[13px] font-medium text-accent">All {recommendedEvidence.length} requests</summary>
+                <ol className="mt-2 space-y-1.5 text-[13px] text-ink">
+                  {recommendedEvidence.map((r) => (
+                    <li key={r.rank}>{r.rank}. {prettyIds(r.request_text, names)}</li>
+                  ))}
+                </ol>
+                <p className="mt-2 font-mono text-xs text-ink-3">
+                  {recommendedEvidence.map((r) => `${r.hop_ref.from_loc}→${r.hop_ref.to_loc} ${r.informativeness.toFixed(4)} bits`).join(' · ')}
+                </p>
+              </details>
+            )}
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-ink-3">No further evidence request for this trace.</p>
+        )}
+      </section>
 
-          <div className="space-y-2">
-            {recommendedEvidence.map((evReq, idx) => (
-              <div
-                key={idx}
-                className="p-3.5 rounded-lg bg-surface border border-inferred/40 flex items-start space-x-3 shadow-sm"
-              >
-                <span className="text-lg text-inferred">📋</span>
-                <div className="flex-1 text-sm">
-                  <div className="font-semibold text-text-primary text-sm mb-1">
-                    {evReq.request_text}
-                  </div>
-                  <div className="text-text-muted font-mono text-sm flex flex-wrap items-center gap-3">
-                    <span>
-                      Hop: {evReq.hop_ref.from_loc} → {evReq.hop_ref.to_loc}
-                    </span>
-                    <span>•</span>
-                    <span>Relative path mass: {formatProbability(evReq.mass)}</span>
-                    <span>•</span>
-                    <span>Informativeness: {evReq.informativeness.toFixed(4)} bits</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {(originPinned || canaryHits.length > 0) && (
+        <section aria-label="Canary check" className={CARD}>
+          <Title icon="shield">Canary check</Title>
+          {originPinned && (
+            <p className="mt-2 flex items-start gap-2 text-sm text-ink">
+              <Icon name="check" className="mt-0.5 shrink-0 text-ok" />
+              Simulated canary records were found in the leak, so the source export is pinned. The routes are still hypotheses.
+            </p>
+          )}
+          {canaryHits.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onCanaryAlert(canaryHits[0])}
+              disabled={busy || offlineReplay}
+              className="mt-3 h-10 w-full rounded-ctl border border-line-strong bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-2 disabled:opacity-50"
+            >
+              Simulate canary alert
+            </button>
+          )}
+          {canaryAlert && (
+            <div role="status" className="mt-3 border-t border-line pt-3 text-sm">
+              <p className="font-medium text-ok">Simulated canary alert</p>
+              <p className="text-ink">{prettyIds(canaryAlert.message, names)}</p>
+              <p className="text-xs text-ink-3">{formatDay(canaryAlert.ts)}</p>
+            </div>
+          )}
+        </section>
       )}
-    </div>
+    </>
   );
 };
 
