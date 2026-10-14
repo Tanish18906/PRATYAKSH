@@ -1,59 +1,44 @@
 // Benchmark data transformation utilities
 // Follows UI_UX_DESIGN.md section 5.8 and FRONTEND.md section 11
 
-import { BenchmarkResult } from '../types/contract';
+import { BenchmarkResult, MethodStats } from '../types/contract';
 
-export interface TransformedBenchmarkDatum {
-  lossLevel: string;
-  pugmark_top1: number;
-  pugmark_top3: number;
-  baseline1_top1: number;
-  baseline1_top3: number;
-  baseline2_top1: number;
-  baseline2_top3: number;
+export type BenchmarkView = 'origin' | 'actor';
+
+export const BENCHMARK_METHODS: Record<BenchmarkView, Array<{ id: string; label: string }>> = {
+  origin: [
+    { id: 'pugmark', label: 'PUGMARK' },
+    { id: 'B3_largest_export', label: 'B3 largest export' },
+    { id: 'B4_most_recent_export', label: 'B4 most recent export' },
+  ],
+  actor: [
+    { id: 'pugmark', label: 'PUGMARK' },
+    { id: 'B1_last_accessor', label: 'B1 last accessor' },
+    { id: 'B2_biggest_exporter', label: 'B2 biggest exporter' },
+  ],
+};
+
+// Backend keys losses as Python str(float(loss)): 0 -> "0.0", 0.2 -> "0.2"
+export const lossKey = (level: number): string => (Number.isInteger(level) ? level.toFixed(1) : String(level));
+
+export function getStats(benchmark: BenchmarkResult, view: BenchmarkView, method: string, level: number): MethodStats | null {
+  return benchmark[view][method]?.[lossKey(level)] ?? null;
 }
+
+// One row per loss level; values are percentages of the returned top1/top3, null when the backend sent none
+export type TransformedBenchmarkDatum = { lossLevel: string } & Record<string, number | null | string>;
 
 export function transformBenchmarkData(
   benchmark: BenchmarkResult,
-  metricType: 'origin' | 'actor'
+  view: BenchmarkView,
+  metric: 'top1' | 'top3'
 ): TransformedBenchmarkDatum[] {
-  const methodMap =
-    metricType === 'origin'
-      ? {
-          primary: 'pugmark',
-          b1: 'B3_largest_export',
-          b2: 'B4_most_recent_export',
-        }
-      : {
-          primary: 'pugmark',
-          b1: 'B1_last_accessor',
-          b2: 'B2_biggest_exporter',
-        };
-
-  const dataSource = metricType === 'origin' ? benchmark.origin : benchmark.actor;
-
   return benchmark.loss_levels.map((level) => {
-    // Loss levels can be represented as "0.0", "0.2" etc or percentage
-    const levelStr = String(level);
-    const levelPercent = `${Math.round(level * 100)}%`;
-
-    const getStats = (method: string) => {
-      const byMethod = dataSource[method] || {};
-      return byMethod[levelStr] || byMethod[levelPercent] || { top1: 0, top3: 0, n: 0, mean_rank: null };
-    };
-
-    const pugmarkStats = getStats(methodMap.primary);
-    const b1Stats = getStats(methodMap.b1);
-    const b2Stats = getStats(methodMap.b2);
-
-    return {
-      lossLevel: `${Math.round(level * 100)}% Loss`,
-      pugmark_top1: Math.round(pugmarkStats.top1 * 100),
-      pugmark_top3: Math.round(pugmarkStats.top3 * 100),
-      baseline1_top1: Math.round(b1Stats.top1 * 100),
-      baseline1_top3: Math.round(b1Stats.top3 * 100),
-      baseline2_top1: Math.round(b2Stats.top1 * 100),
-      baseline2_top3: Math.round(b2Stats.top3 * 100),
-    };
+    const row: TransformedBenchmarkDatum = { lossLevel: `${Math.round(level * 100)}%` };
+    for (const m of BENCHMARK_METHODS[view]) {
+      const s = getStats(benchmark, view, m.id, level);
+      row[m.id] = s ? Math.round(s[metric] * 1000) / 10 : null;
+    }
+    return row;
   });
 }

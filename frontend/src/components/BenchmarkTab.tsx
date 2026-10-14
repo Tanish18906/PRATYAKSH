@@ -2,18 +2,13 @@
 // Follows UI_UX_DESIGN.md section 5.8 and FRONTEND.md section 11
 
 import React, { useState } from 'react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  CartesianGrid,
-} from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { BenchmarkResult } from '../types/contract';
-import { transformBenchmarkData } from '../utils/benchmark';
+import { BENCHMARK_METHODS, BenchmarkView, getStats, transformBenchmarkData } from '../utils/benchmark';
+
+// PUGMARK in accent, baselines in neutral graph tones
+const METHOD_COLORS = ['#5EEAD4', '#627D98', '#8576AF'];
+const BENCHMARK_TIP = 'Tests PUGMARK on generated scenarios with known synthetic ground truth.';
 
 interface BenchmarkTabProps {
   benchmark: BenchmarkResult | null;
@@ -22,132 +17,157 @@ interface BenchmarkTabProps {
   onRun: () => void;
 }
 
-export const BenchmarkTab: React.FC<BenchmarkTabProps> = ({
-  benchmark,
-  busy,
-  offlineReplay,
-  onRun,
-}) => {
-  const [metricType, setMetricType] = useState<'origin' | 'actor'>('origin');
+export const BenchmarkTab: React.FC<BenchmarkTabProps> = ({ benchmark, busy, offlineReplay, onRun }) => {
+  const [view, setView] = useState<BenchmarkView>('origin');
+  const running = benchmark?.status === 'running';
+
+  const runButton = (
+    <button
+      type="button"
+      disabled={busy || offlineReplay || running}
+      onClick={onRun}
+      title={BENCHMARK_TIP}
+      className="px-4 py-2 rounded bg-accent hover:bg-accent/90 text-background font-bold text-xs shadow-md disabled:opacity-50"
+    >
+      Run benchmark
+    </button>
+  );
 
   if (!benchmark) {
     return (
       <div className="p-8 text-center text-text-muted space-y-4">
-        <span className="text-3xl block">📊</span>
-        <h3 className="text-sm font-semibold text-text-primary">No Benchmark Data Available</h3>
-        <p className="text-xs max-w-md mx-auto text-text-secondary">
-          Run synthetic benchmark evaluation across 200 held-out seeds to compare PUGMARK against naive baseline heuristics at multiple log-loss levels.
-        </p>
-        <button
-          type="button"
-          disabled={busy || offlineReplay}
-          onClick={onRun}
-          className="px-4 py-2 rounded bg-accent hover:bg-accent/90 text-background font-bold text-xs shadow-md transition-colors disabled:opacity-50"
-        >
-          {busy ? 'Running Benchmark...' : 'Run Benchmark (Seeds 50-199)'}
-        </button>
+        <p className="text-sm">No benchmark results available. Run the synthetic benchmark.</p>
+        {runButton}
       </div>
     );
   }
 
-  const chartData = transformBenchmarkData(benchmark, metricType);
-
-  const baselineLabels =
-    metricType === 'origin'
-      ? { b1: 'B3: Largest Export', b2: 'B4: Most Recent Export' }
-      : { b1: 'B1: Last Accessor', b2: 'B2: Biggest Exporter' };
-
-  return (
-    <div className="space-y-4">
-      {/* Top Header & View Toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">
-            Synthetic Benchmark Evaluation
-          </h3>
-          <p className="text-xs text-text-muted font-mono">
-            Tuned on: {benchmark.tuned_on} • Reported on: {benchmark.reported_on}
-          </p>
+  if (benchmark.status === 'running') {
+    const pct = Math.round(benchmark.progress * 100);
+    return (
+      <div className="p-8 space-y-3 max-w-md mx-auto text-center">
+        <p className="text-sm text-text-primary">Running synthetic benchmark... {pct}%</p>
+        <div
+          className="w-full h-2 bg-surface-raised rounded-full overflow-hidden border border-border"
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div className="h-full bg-accent transition-all" style={{ width: `${pct}%` }} />
         </div>
-
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-1 bg-surface-raised p-1 rounded border border-border text-xs">
-            <button
-              type="button"
-              onClick={() => setMetricType('origin')}
-              className={`px-3 py-1 rounded font-semibold transition-colors ${
-                metricType === 'origin'
-                  ? 'bg-accent text-background shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              Origin Ranking
-            </button>
-            <button
-              type="button"
-              onClick={() => setMetricType('actor')}
-              className={`px-3 py-1 rounded font-semibold transition-colors ${
-                metricType === 'actor'
-                  ? 'bg-accent text-background shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              Actor Ranking
-            </button>
-          </div>
-
-          <button
-            type="button"
-            disabled={busy || offlineReplay}
-            onClick={onRun}
-            className="px-3 py-1.5 rounded bg-surface-raised hover:bg-surface-hover text-text-secondary border border-border text-xs font-semibold disabled:opacity-50"
-          >
-            {busy ? 'Running...' : 'Re-run Benchmark'}
-          </button>
-        </div>
+        <p className="text-xs text-text-muted">{benchmark.note}</p>
       </div>
+    );
+  }
 
-      {/* Recharts Chart Container */}
-      <div className="bg-surface rounded-lg border border-border p-4 h-80">
+  if (benchmark.status === 'failed') {
+    return (
+      <div className="p-8 text-center space-y-4">
+        <p className="text-sm text-danger">Synthetic benchmark failed. No results were recorded.</p>
+        {runButton}
+      </div>
+    );
+  }
+
+  const methods = BENCHMARK_METHODS[view];
+
+  const chart = (metric: 'top1' | 'top3', title: string) => (
+    <div className="bg-surface rounded-lg border border-border p-4">
+      <h4 className="text-xs font-bold uppercase tracking-wider text-text-primary mb-2">{title}</h4>
+      <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+          <BarChart data={transformBenchmarkData(benchmark, view, metric)} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#344754" />
-            <XAxis dataKey="lossLevel" stroke="#B9C8D2" fontSize={11} tickLine={false} />
-            <YAxis
+            <XAxis
+              dataKey="lossLevel"
               stroke="#B9C8D2"
-              fontSize={11}
-              domain={[0, 100]}
-              unit="%"
+              fontSize={12}
               tickLine={false}
-              axisLine={false}
+              label={{ value: 'Log loss', position: 'insideBottom', offset: -5, fill: '#B9C8D2', fontSize: 12 }}
             />
+            <YAxis stroke="#B9C8D2" fontSize={12} domain={[0, 100]} unit="%" tickLine={false} axisLine={false} />
             <Tooltip
-              contentStyle={{
-                backgroundColor: '#121D27',
-                borderColor: '#344754',
-                color: '#F2F7FA',
-                fontSize: '11px',
-                borderRadius: '6px',
-              }}
-              formatter={(value: number) => [`${value}%`, 'Accuracy']}
+              contentStyle={{ backgroundColor: '#121D27', borderColor: '#344754', color: '#F2F7FA', fontSize: '12px' }}
+              formatter={(value) => (value === null || value === undefined ? 'N/A' : `${value}%`)}
             />
-            <Legend
-              wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
-              iconType="circle"
-            />
-            {/* PUGMARK vs Baselines */}
-            <Bar dataKey="pugmark_top1" name="PUGMARK (Top-1)" fill="#5EEAD4" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="pugmark_top3" name="PUGMARK (Top-3)" fill="#164F4C" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="baseline1_top1" name={`${baselineLabels.b1} (Top-1)`} fill="#627D98" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="baseline2_top1" name={`${baselineLabels.b2} (Top-1)`} fill="#8576AF" radius={[3, 3, 0, 0]} />
+            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '14px' }} />
+            {methods.map((m, i) => (
+              <Bar key={m.id} dataKey={m.id} name={m.label} fill={METHOD_COLORS[i]} radius={[3, 3, 0, 0]} />
+            ))}
           </BarChart>
         </ResponsiveContainer>
       </div>
+    </div>
+  );
 
-      {/* Benchmark Note (Verbatim from spec) */}
-      <div className="p-3 bg-surface rounded border border-border text-center text-xs text-text-muted italic">
-        {benchmark.note || 'Synthetic data. Numbers measure the engine on our simulator, not real-world accuracy.'}
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider" title={BENCHMARK_TIP}>
+            Benchmark
+          </h3>
+          <p className="text-xs text-text-muted font-mono">
+            Synthetic benchmark complete • Tuned on {benchmark.tuned_on} • Reported on {benchmark.reported_on}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 bg-surface-raised p-1 rounded border border-border text-xs">
+            {(['origin', 'actor'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+                className={`px-3 py-1 rounded font-semibold ${
+                  view === v ? 'bg-accent text-background' : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {v === 'origin' ? 'Origin' : 'Actor'}
+              </button>
+            ))}
+          </div>
+          {runButton}
+        </div>
       </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {chart('top1', 'Top-1 accuracy')}
+        {chart('top3', 'Top-3 accuracy')}
+      </div>
+
+      <div className="overflow-x-auto rounded border border-border">
+        <table className="w-full text-xs font-mono text-left">
+          <thead>
+            <tr className="border-b border-border text-text-muted bg-surface-raised">
+              <th className="p-2 font-semibold">Method</th>
+              {benchmark.loss_levels.map((l) => (
+                <th key={l} className="p-2 font-semibold">
+                  Log loss {Math.round(l * 100)}%: mean rank · n
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {methods.map((m) => (
+              <tr key={m.id}>
+                <td className="p-2 font-bold text-text-primary">{m.label}</td>
+                {benchmark.loss_levels.map((l) => {
+                  const s = getStats(benchmark, view, m.id, l);
+                  return (
+                    <td key={l} className="p-2 text-text-secondary">
+                      {s ? `${s.mean_rank === null ? 'N/A' : s.mean_rank.toFixed(2)} · ${s.n}` : 'N/A'}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="p-3 bg-surface rounded border border-border text-center text-xs text-text-muted">{benchmark.note}</p>
     </div>
   );
 };

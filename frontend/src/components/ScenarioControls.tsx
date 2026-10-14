@@ -75,6 +75,7 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({
               {(controls.log_loss * 100).toFixed(0)}%
             </span>
           </label>
+          <div className="flex flex-col gap-0.5">
           <input
             id="loss-slider"
             type="range"
@@ -88,6 +89,14 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({
             onChange={(e) => onControlsChange({ log_loss: parseFloat(e.target.value) })}
             className="w-24 accent-accent cursor-pointer disabled:opacity-50 h-1.5 bg-surface-raised rounded-lg"
           />
+          {/* Tick labels match the benchmark loss levels */}
+          <div className="w-24 flex justify-between text-[10px] font-mono text-text-muted" aria-hidden="true">
+            <span>0%</span>
+            <span>20%</span>
+            <span>40%</span>
+            <span>60%</span>
+          </div>
+          </div>
         </div>
 
         {/* Canary Mode Toggle */}
