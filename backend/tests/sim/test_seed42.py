@@ -3,6 +3,8 @@ from datetime import datetime
 from functools import lru_cache
 from time import perf_counter
 
+import pytest
+
 from app.sim.generator import generate_scenario, reveal_value, to_summary, warm_cache
 from app.sim.leakfile import mask_value
 from app.sim.store import get_bundle
@@ -86,6 +88,26 @@ def test_seed42_loss_and_determinism():
     assert json.dumps(demo().public, sort_keys=True) == json.dumps(
         generate_scenario("A1", 42, 0.4, False, "demo").public, sort_keys=True
     )
+
+
+@pytest.mark.parametrize("loss", (0.0, 0.2, 0.4))
+def test_seed42_phase2_trace_inputs(loss):
+    bundle = demo(loss)
+    public = bundle.public
+    validate_public_scenario(public)
+    artifacts = {artifact["id"]: artifact for artifact in public["artifacts"]}
+    leak = public["leak_sample"]
+    assert artifacts["art:E2"]["newest_record_ts"] < leak["newest_record_ts"]
+    assert "phone" not in artifacts["art:E3"]["columns"]
+    assert all(artifacts[f"art:E{i}"]["newest_record_ts"] > leak["newest_record_ts"]
+               for i in (4, 5, 6))
+    assert bundle.truth["origin_artifact"] == "art:E1"
+    assert bundle.truth["true_actors"] == ["act:ravi-menon"]
+    download = bundle.truth["true_path"][1]
+    assert download["dropped"] is False
+    assert any(event["id"] == download["event_id"] and
+               event["actor"] == "act:ravi-menon" and
+               event["action"] == "download" for event in public["events"])
 
 
 def test_bench_generation_after_cache():
