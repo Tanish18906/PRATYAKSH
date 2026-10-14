@@ -278,9 +278,11 @@ Open your browser at `http://localhost:5173`.
 ### 3. 100% Offline Replay Mode
 PRATYAKSH is engineered to function completely offline without internet connectivity. If the backend is not running, the frontend automatically falls back to `public/demo.json` (precomputed Seed 42 forensic trace) and displays an **OFFLINE REPLAY** indicator.
 
-To regenerate the offline bundle:
+To regenerate the offline bundle (seed 42, A1, demo scale, loss 0.4, canary mode on; needs the simulator):
 ```bash
 python backend/scripts/make_demo_bundle.py
+# until the simulator is available, a placeholder from a hand-written scenario:
+python backend/scripts/make_demo_bundle.py --fixture H1
 ```
 
 ---

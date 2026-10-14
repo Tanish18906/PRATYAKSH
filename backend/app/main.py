@@ -2,12 +2,14 @@
 
 Phase 1: scenario generate/get, leak export, trace, JSON error shape, audit append.
 Phase 2: reveal (reason of at least 8 characters, audited) and the audit list.
+Phase 3: inject, canary alert, HTML incident report; emails are scrubbed from every response but reveal.
 Scenarios come from the simulator when it exists (`_sim()`); until then the hand-written fixtures
 H1..H8 are registered at startup, `generate` answers 409 not_ready and so does `reveal` (no private store).
 """
 import copy
 import importlib
 import json
+import re
 import types
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -15,21 +17,27 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import CONTRACT_VERSION, ENGINE
 from app.engine.trace import trace as run_trace
-from app.models import (AuditList, ExportRequest, GenerateRequest, PublicScenario, RevealRequest,
-                        RevealResponse, ScenarioSummary, TraceRequest, TraceResult)
+from app.models import (AuditList, CanaryAlert, CanaryAlertRequest, CanaryAlertResponse, ExportRequest,
+                        GenerateRequest, InjectRequest, PublicScenario, RevealRequest, RevealResponse,
+                        ScenarioSummary, TraceRequest, TraceResult)
 from app.privacy import audit
 from app.privacy.mask import mask_value
+from app.report.build import build_report
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
 
 # scenario id -> {"public": PublicScenario dict, "bundle": simulator bundle or None}. The engine and API
 # only ever read "public"; the bundle (truth, private store) is never serialised.
 STORE: dict = {}
+# trace id -> latest TraceResult dict, so the report can be built without re-running the engine
+TRACES: dict = {}
+
+_EMAIL = re.compile(r"([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})")
 
 
 class ApiException(Exception):
@@ -41,7 +49,8 @@ def _error(status: int, code: str, message: str) -> JSONResponse:
     return JSONResponse({"error": {"code": code, "message": message}}, status_code=status)
 
 
-_SIM_MODULES = ("app.sim", "app.sim.generator", "app.sim.leakfile", "app.sim.store")
+_SIM_MODULES = ("app.sim", "app.sim.generator", "app.sim.leakfile", "app.sim.store", "app.sim.inject",
+                "app.sim.exports", "app.sim.archetypes", "app.sim.discovery")
 
 
 def _sim_fn(name: str):
@@ -61,7 +70,8 @@ def _sim():
     if gen is None:
         return None
     return types.SimpleNamespace(generate_scenario=gen, reveal_value=_sim_fn("reveal_value"),
-                                 get_bundle=_sim_fn("get_bundle"))
+                                 get_bundle=_sim_fn("get_bundle"), inject_leak=_sim_fn("inject_leak"),
+                                 canary_alert=_sim_fn("canary_alert"))
 
 
 def register(public: dict, bundle=None) -> None:
@@ -104,8 +114,11 @@ async def _http(_req: Request, exc: StarletteHTTPException):
 
 
 def _round4(o):
+    """Responses: floats to 4 decimals and any email-looking string masked (first character, ***, domain)."""
     if isinstance(o, float):
         return round(o, 4)
+    if isinstance(o, str):
+        return _EMAIL.sub(r"\1***@\2", o)
     if isinstance(o, dict):
         return {k: _round4(v) for k, v in o.items()}
     if isinstance(o, list):
@@ -153,6 +166,15 @@ def _summary(sc: PublicScenario) -> ScenarioSummary:
         discovery=sc.discovery, leak_sample=sc.leak_sample, actors=sc.actors, locations=sc.locations)
 
 
+def _run_trace(public: dict, top_k: int) -> TraceResult:
+    try:
+        result = TraceResult.model_validate(run_trace(public, top_k))
+    except Exception as exc:
+        raise ApiException(500, "engine_error", f"trace failed: {type(exc).__name__}")
+    TRACES[result.trace_id] = result.model_dump(by_alias=True)
+    return result
+
+
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok", "contract_version": CONTRACT_VERSION, "engine_version": ENGINE["ENGINE_VERSION"]}
@@ -193,10 +215,7 @@ def leak_export(req: ExportRequest):
 def trace(req: TraceRequest):
     entry = _lookup(req.scenario_id)
     sc = _public(entry)
-    try:
-        result = TraceResult.model_validate(run_trace(entry["public"], req.top_k or ENGINE["TOP_K"]))
-    except Exception as exc:
-        raise ApiException(500, "engine_error", f"trace failed: {type(exc).__name__}")
+    result = _run_trace(entry["public"], req.top_k or ENGINE["TOP_K"])
     audit.append("trace", scenario_id=sc.id, object_id=result.trace_id)
     return _ok(result)
 
@@ -230,3 +249,68 @@ def reveal(req: RevealRequest):
 @app.get("/api/audit")
 def audit_list(scenario_id: str | None = None):
     return _ok(AuditList(entries=audit.entries(scenario_id)))
+
+
+@app.post("/api/inject")
+def inject(req: InjectRequest):
+    entry = _lookup(req.base_scenario_id)
+    sc = _public(entry)
+    if req.actor not in {a.id for a in sc.actors}:
+        raise ApiException(400, "bad_request", f"actor {req.actor} is not part of {sc.id}")
+    sim = _sim()
+    fn = getattr(sim, "inject_leak", None) if sim is not None else None
+    if fn is None or entry["bundle"] is None:
+        raise ApiException(409, "not_ready", "injection needs the simulator and a generated base scenario")
+    try:
+        bundle = fn(entry["bundle"], req.actor)
+    except Exception as exc:
+        raise ApiException(500, "engine_error", f"inject failed: {type(exc).__name__}")
+    register(bundle.public, bundle)
+    new = _public(STORE[bundle.public["id"]])
+    audit.append("inject", scenario_id=new.id, object_id=req.actor)
+    return _ok(_summary(new))
+
+
+@app.post("/api/canary/alert")
+def canary_alert(req: CanaryAlertRequest):
+    entry = _lookup(req.scenario_id)
+    sc = _public(entry)
+    if not sc.params.canary_mode:
+        raise ApiException(400, "bad_request", "canary mode is off for this scenario")
+    registry = {c.id: c for c in sc.canary_registry}
+    if req.canary_id not in registry:
+        raise ApiException(404, "not_found", f"canary {req.canary_id} is not in the registry")
+    sim = _sim()
+    fn = getattr(sim, "canary_alert", None) if sim is not None else None
+    if fn is not None and entry["bundle"] is not None:
+        try:
+            raw = fn(entry["bundle"], req.canary_id)
+        except Exception as exc:
+            raise ApiException(500, "engine_error", f"canary alert failed: {type(exc).__name__}")
+    else:  # derived from the public registry when no simulator bundle exists (fixtures)
+        raw = {"canary_id": req.canary_id, "export_id": registry[req.canary_id].export_id,
+               "ts": sc.leak_sample.found_ts,
+               "message": f"Canary {req.canary_id} planted in {registry[req.canary_id].export_id} was triggered."}
+    public = copy.deepcopy(entry["public"])  # the alert counts as a canary hit for this trace only
+    hits = public["leak_sample"]["canary_hits"]
+    if req.canary_id not in hits:
+        hits.append(req.canary_id)
+    result = _run_trace(public, ENGINE["TOP_K"])
+    audit.append("canary_alert", scenario_id=sc.id, object_id=req.canary_id)
+    return _ok(CanaryAlertResponse(alert=CanaryAlert.model_validate(raw), trace=result))
+
+
+@app.get("/api/report/{trace_id}")
+def report(trace_id: str):
+    trace_dict = TRACES.get(trace_id)
+    if trace_dict is None:
+        if not trace_id.startswith("trc:"):
+            raise ApiException(404, "not_found", f"trace {trace_id} not found")
+        entry = _lookup("scn:" + trace_id.removeprefix("trc:"))  # 404 if no such scenario
+        _public(entry)
+        trace_dict = _run_trace(entry["public"], ENGINE["TOP_K"]).model_dump(by_alias=True)
+    entry = _lookup(trace_dict["scenario_id"])
+    sc = _public(entry)
+    html = build_report(_round4(_summary(sc).model_dump(by_alias=True)), _round4(trace_dict))
+    audit.append("report_export", scenario_id=sc.id, object_id=trace_id)
+    return HTMLResponse(html)

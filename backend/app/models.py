@@ -438,3 +438,25 @@ class RevealResponse(_M):
 
 class AuditList(_M):
     entries: list[AuditEntry]
+
+
+class InjectRequest(_M):
+    base_scenario_id: str
+    actor: str
+
+
+class CanaryAlertRequest(_M):
+    scenario_id: str
+    canary_id: str
+
+
+class CanaryAlert(_M):
+    canary_id: str
+    export_id: str
+    ts: Ts
+    message: str
+
+
+class CanaryAlertResponse(_M):
+    alert: CanaryAlert
+    trace: TraceResult
