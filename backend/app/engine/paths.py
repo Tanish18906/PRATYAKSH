@@ -1,10 +1,9 @@
 """Stage 3 custody paths (docs/03_ENGINE.md section 7): M1 observed move, M2 hidden move to the leak
 location, M3 hidden download to a person's endpoint, M4 hidden copy between systems, plus the fallback."""
 import math
-from datetime import timedelta
 
 from app.config import ENGINE as CFG
-from app.engine.normalize import parse_ts
+from app.engine.normalize import shift_days
 
 
 def hidden_cost(idx, loc_id: str, loss: dict) -> tuple:
@@ -28,13 +27,13 @@ def find_paths(idx, art: dict, loss: dict, found_at: str, found_ts: str) -> tupl
     out, seen, notes, best = [], set(), [], [math.inf]
     alt_cache = {}
     recent = sorted(idx.events, key=lambda e: (e["ts"], e["id"]), reverse=True)
-    lo = parse_ts(found_ts) - timedelta(days=CFG["ACTOR_ALT_WINDOW_DAYS"])
+    lo = shift_days(found_ts, -CFG["ACTOR_ALT_WINDOW_DAYS"])  # ISO strings compare in time order
 
     def alt_actors(loc_id, holder):
         if loc_id not in alt_cache:
             who = []
             for e in recent:
-                if e["ts"] <= found_ts and parse_ts(e["ts"]) >= lo and loc_id in (e["from_loc"], e["to_loc"]):
+                if lo <= e["ts"] <= found_ts and loc_id in (e["from_loc"], e["to_loc"]):
                     if e["actor"] not in who:
                         who.append(e["actor"])
             alt_cache[loc_id] = who

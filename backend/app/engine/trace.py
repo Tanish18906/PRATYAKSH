@@ -4,6 +4,7 @@ Pure and deterministic. Reads only the public scenario; never params.log_loss or
 """
 from app.config import ENGINE as CFG
 from app.engine.anomaly import Anomaly
+from app.engine.chokepoint import chokepoints
 from app.engine.evidence import recommend
 from app.engine.graph import build_graph
 from app.engine.index import Index
@@ -57,5 +58,6 @@ def trace(scenario: dict, top_k: int = 5) -> dict:
         paths += [{"origin": art_id, **p} for p in found]
     result.update(rank(idx, Anomaly(idx), paths, cands, pinned, top_k, leak))
     result["graph"] = build_graph(idx, result["hypotheses"])
+    result["chokepoints"] = chokepoints(idx, paths, leak["found_at"])
     result["recommended_evidence"] = recommend(idx, paths, loss, leak)
     return result
