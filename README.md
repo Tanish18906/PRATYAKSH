@@ -77,13 +77,13 @@ Instead of merely searching logs, PRATYAKSH starts from the **leaked content its
 | **Privacy Preservation** | Centralized log ingestion often duplicates and exposes raw PII. | **Zero-Raw-Data Sketches**: Compares keyed 64-bit HMAC sketches; raw records never cross boundaries. |
 | **Data Masking** | Static masking or unrestricted analyst access. | **Masked by Default + Audited Reveal**: Mandatory cryptographic masking; reveals require logged justification. |
 | **Containment Guidance** | Generic advice ("reset passwords"). | **Greedy Chokepoints**: Calculates exact permission/channel closure covering maximum path likelihood. |
-| **Forensic Uncertainty** | Binary assumptions or fabricated confidence. | **Calibrated Likelihood & Evidence Entropy**: Recommends which log source would maximize information gain. |
+| **Forensic Uncertainty** | Binary assumptions or fabricated confidence. | **Relative Likelihood & Evidence Entropy**: Recommends which log source would maximize information gain. |
 
 ---
 
 ## 🔬 Mathematical & Algorithmic Foundations
 
-### 1. Zero-Exposure Bottom-$k$ MinHash Containment
+### 1. Keyed Bottom-$k$ MinHash Containment
 Raw records are never ingested by the tracing engine. Each candidate dataset export $E$ and the leaked file $L$ compute a bottom-$k$ sketch ($k = 512$) on normalized identifier columns (`customer_id`, `email`, `phone`, `policy_no`):
 
 $$\text{hash}(x) = \text{HMAC-SHA256}(K_{\text{case}}, \text{normalize}(x))[:8]$$
@@ -238,15 +238,28 @@ pip install -r requirements.txt
 # Run test suite to verify math and contract integrity
 pytest -q
 
-# Start the FastAPI backend server (port 8000)
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Start the FastAPI backend server (port 8000), one worker
+uvicorn app.main:app --port 8000
 ```
 
-Verify backend health:
+> **Run exactly one uvicorn worker (the default). Do not pass `--workers`.** Loaded scenarios, audit numbering and
+> benchmark state live in the memory of one process, and audit ids are made unique with an in-process lock.
+
+Smoke test (server running in another terminal; each line was run as written):
 ```bash
-curl http://localhost:8000/api/health
-# Returns: {"status":"ok","contract_version":"1.0","engine_version":"1.0.0"}
+curl -s http://127.0.0.1:8000/api/health
+# {"status":"ok","contract_version":"1.0","engine_version":"1.0.0"}
+
+curl -s -X POST http://127.0.0.1:8000/api/scenario/generate -H 'content-type: application/json' -d '{"archetype":"A1","seed":42,"log_loss":0.4,"canary_mode":false,"scale":"demo"}'
+# a ScenarioSummary whose "id" is "scn:A1-42-L40"
+
+curl -s -X POST http://127.0.0.1:8000/api/trace -H 'content-type: application/json' -d '{"scenario_id":"scn:A1-42-L40"}'
+# a TraceResult: origin art:E1, top hypothesis act:ravi-menon, last hop inferred
+
+python backend/scripts/smoke.py     # does the three calls above and prints PASS or FAIL (run from the repo root)
 ```
+All data is SIMULATED. Every generate, export, trace, reveal, report and benchmark appends one line to `backend/data/audit.jsonl`.
+When no simulator is available the API loads the hand-written scenarios `scn:H1` to `scn:H8` instead and `generate` answers 409.
 
 ---
 
@@ -270,9 +283,11 @@ Open your browser at `http://localhost:5173`.
 ### 3. 100% Offline Replay Mode
 PRATYAKSH is engineered to function completely offline without internet connectivity. If the backend is not running, the frontend automatically falls back to `public/demo.json` (precomputed Seed 42 forensic trace) and displays an **OFFLINE REPLAY** indicator.
 
-To regenerate the offline bundle:
+To regenerate the offline bundle (seed 42, A1, demo scale, loss 0.4, canary mode on; needs the simulator):
 ```bash
 python backend/scripts/make_demo_bundle.py
+# until the simulator is available, a placeholder from a hand-written scenario:
+python backend/scripts/make_demo_bundle.py --fixture H1
 ```
 
 ---
@@ -319,30 +334,15 @@ PRATYAKSH evaluates performance against three traditional industry baselines acr
 * **B2 (Biggest Exporter)**: Attributed to the user or service account with the highest gross export volume.
 * **B3 & B4**: Baseline origin models using largest or most recent export timestamps.
 
-```
-       Top-1 Attribution Accuracy vs. Log Drop Rate
-  100% |   ┌─────┐
-       |   │     │    ┌─────┐
-   80% |   │     │    │     │    ┌─────┐
-       |   │  P  │    │  P  │    │  P  │    ┌─────┐
-   60% |   │  R  │    │  R  │    │  R  │    │  P  │
-       |   │  A  │    │  A  │    │  A  │    │  R  │
-   40% |   │  T  │ ┌┐ │  T  │ ┌┐ │  T  │ ┌┐ │  A  │ ┌┐
-       |   │  Y  │ ││ │  Y  │ ││ │  Y  │ ││ │  T  │ ││
-   20% |   │  A  │ ││ │  A  │ ││ │  A  │ ││ │  Y  │ ││
-       |   │  K  │ ││ │  K  │ ││ │  K  │ ││ │  A  │ ││
-    0% +───┴─────┴─┴┴─┴─────┴─┴┴─┴─────┴─┴┴─┴─────┴─┴┴───
-             0%          20%         40%         60%
-                         Log Loss Rate
-             [P] PRATYAKSH    [] Naive Baselines
-```
-*(Benchmark figures are computed dynamically over synthetic test distributions; run `python -m backend.app.bench.run` to evaluate).*
+> **Status: no benchmark has been run yet.** No accuracy figure is claimed here. When the benchmark runner exists,
+> results will be produced on seeds 50 to 199 (tuning uses seeds 0 to 49 only) and reported as measured on
+> **synthetic data from our own simulator**, not as real-world accuracy.
 
 ---
 
 ## 🛡 Security & Privacy Guardrails
 
-* **Zero-Raw PII Ingestion**: Engine operations occur solely over hashes and schema metadata.
+* **Hash-Only Matching**: The engine compares keyed sketches and schema metadata, never raw rows.
 * **Cryptographic Salting**: HMAC keys are randomized per case scenario, neutralizing rainbow table attacks on lower-entropy identifiers (e.g. phone numbers).
 * **Immutability & Accountability**: All data unmasking, report downloads, and trace executions write structured events to `backend/data/audit.jsonl`.
 * **Honest Limitations**:
