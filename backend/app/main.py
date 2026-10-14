@@ -3,6 +3,7 @@
 Phase 1: scenario generate/get, leak export, trace, JSON error shape, audit append.
 Phase 2: reveal (reason of at least 8 characters, audited) and the audit list.
 Phase 3: inject, canary alert, HTML incident report; emails are scrubbed from every response but reveal.
+Phase 4: benchmark run (background thread) and result polling.
 Scenarios come from the simulator when it exists (`_sim()`); until then the hand-written fixtures
 H1..H8 are registered at startup, `generate` answers 409 not_ready and so does `reveal` (no private store).
 """
@@ -10,6 +11,7 @@ import copy
 import importlib
 import json
 import re
+import threading
 import types
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -20,9 +22,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.bench.run import _empty as _bench_empty
+from app.bench.run import run_benchmark
 from app.config import CONTRACT_VERSION, ENGINE
 from app.engine.trace import trace as run_trace
-from app.models import (AuditList, CanaryAlert, CanaryAlertRequest, CanaryAlertResponse, ExportRequest,
+from app.models import (AuditList, BenchmarkResult, BenchmarkRunRequest, BenchmarkRunResponse, CanaryAlert,
+                        CanaryAlertRequest, CanaryAlertResponse, ExportRequest,
                         GenerateRequest, InjectRequest, PublicScenario, RevealRequest, RevealResponse,
                         ScenarioSummary, TraceRequest, TraceResult)
 from app.privacy import audit
@@ -36,6 +41,8 @@ FIXTURE_DIR = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
 STORE: dict = {}
 # trace id -> latest TraceResult dict, so the report can be built without re-running the engine
 TRACES: dict = {}
+# benchmark id -> BenchmarkResult dict (running, done or failed)
+BENCHMARKS: dict = {}
 
 _EMAIL = re.compile(r"([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})")
 
@@ -314,3 +321,35 @@ def report(trace_id: str):
     html = build_report(_round4(_summary(sc).model_dump(by_alias=True)), _round4(trace_dict))
     audit.append("report_export", scenario_id=sc.id, object_id=trace_id)
     return HTMLResponse(html)
+
+
+def _bench_worker(bid: str, generate, req: BenchmarkRunRequest) -> None:
+    def progress(p: float) -> None:
+        BENCHMARKS[bid]["progress"] = round(p, 4)
+
+    try:
+        result = run_benchmark(generate, req.seed_range, req.loss_levels, req.archetypes, progress)
+    except Exception:
+        result = _bench_empty(req.seed_range, req.loss_levels, "failed", BENCHMARKS[bid]["progress"])
+    BENCHMARKS[bid] = {"benchmark_id": bid, **result}
+
+
+@app.post("/api/benchmark/run")
+def benchmark_run(req: BenchmarkRunRequest):
+    sim = _sim()
+    generate = getattr(sim, "generate_scenario", None) if sim is not None else None
+    if generate is None:
+        raise ApiException(409, "not_ready", "the benchmark needs the simulator, which is not available yet")
+    bid = f"bench:{len(BENCHMARKS) + 1:04d}"
+    BENCHMARKS[bid] = {"benchmark_id": bid, **_bench_empty(req.seed_range, req.loss_levels)}
+    audit.append("benchmark_run", object_id=bid)
+    threading.Thread(target=_bench_worker, args=(bid, generate, req), daemon=True).start()
+    return _ok(BenchmarkRunResponse(benchmark_id=bid))
+
+
+@app.get("/api/benchmark/{benchmark_id}")
+def benchmark_get(benchmark_id: str):
+    entry = BENCHMARKS.get(benchmark_id)
+    if entry is None:
+        raise ApiException(404, "not_found", f"benchmark {benchmark_id} not found")
+    return _ok(BenchmarkResult.model_validate(entry))

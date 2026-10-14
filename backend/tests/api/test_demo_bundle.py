@@ -33,3 +33,24 @@ def test_cli_without_simulator_or_fixture_fails_clearly(tmp_path, capsys):
     out = tmp_path / "demo.json"
     assert bundle_main(["--out", str(out)]) != 0
     assert "simulator" in capsys.readouterr().err.lower() and not out.exists()
+
+
+def test_bundle_embeds_a_saved_benchmark(tmp_path):
+    from app.bench import run as bench_run
+    from tests.api.test_benchmark import fake_generate
+
+    res = bench_run.run_benchmark(fake_generate, (50, 52), [0.0, 0.2], ["A1"])
+    saved = tmp_path / "bench.json"
+    saved.write_text(json.dumps({"benchmark_id": "bench:0001", **res}))
+    out = tmp_path / "demo.json"
+    assert bundle_main(["--fixture", "H1", "--benchmark", str(saved), "--out", str(out)]) == 0
+    b = json.loads(out.read_text())
+    DemoBundle.model_validate(b)
+    assert b["benchmark"]["benchmark_id"] == "bench:0001" and b["benchmark"]["reported_on"] == "seeds 50-52"
+
+
+def test_bundle_rejects_a_bad_benchmark_file(tmp_path, capsys):
+    bad = tmp_path / "bench.json"
+    bad.write_text('{"nope": 1}')
+    assert bundle_main(["--fixture", "H1", "--benchmark", str(bad), "--out", str(tmp_path / "d.json")]) != 0
+    assert "benchmark" in capsys.readouterr().err.lower()

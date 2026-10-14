@@ -5,7 +5,7 @@ Graph edges use the JSON key `from`; dump with `by_alias=True`.
 """
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 Ts = Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")]
 Hash16 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{16}$")]
@@ -460,3 +460,27 @@ class CanaryAlert(_M):
 class CanaryAlertResponse(_M):
     alert: CanaryAlert
     trace: TraceResult
+
+
+class BenchmarkRunRequest(_M):
+    seed_range: list[int] = Field(min_length=2, max_length=2)
+    loss_levels: list[float] = Field(min_length=1)
+    archetypes: list[Archetype] = Field(min_length=1)
+
+    @field_validator("seed_range")
+    @classmethod
+    def _seeds(cls, v):
+        if v[0] < 0 or v[1] < v[0] or v[1] - v[0] >= 1000:
+            raise ValueError("seed_range must be [first, last] with 0 <= first <= last and fewer than 1000 seeds")
+        return v
+
+    @field_validator("loss_levels")
+    @classmethod
+    def _losses(cls, v):
+        if any(not 0.0 <= x <= 0.8 for x in v):
+            raise ValueError("loss_levels must be between 0 and 0.8")
+        return v
+
+
+class BenchmarkRunResponse(_M):
+    benchmark_id: str

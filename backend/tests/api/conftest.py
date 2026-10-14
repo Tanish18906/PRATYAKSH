@@ -14,6 +14,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(audit, "PATH", tmp_path / "audit.jsonl")
     audit.reset()
     main.STORE.clear()
+    main.BENCHMARKS.clear()
     monkeypatch.setattr(main, "_sim", lambda: None)
     for name in ("H1", "H2", "H3", "H6", "H7"):
         main.register(build(name))

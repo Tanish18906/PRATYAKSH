@@ -2,6 +2,7 @@
 
     python backend/scripts/make_demo_bundle.py                 # seed 42, A1, demo, loss 0.4, canary mode on
     python backend/scripts/make_demo_bundle.py --fixture H1    # placeholder from a hand-written scenario
+    python backend/scripts/make_demo_bundle.py --benchmark final.json   # embed a saved BenchmarkResult
 
 Writes frontend/public/demo.json unless --out is given. Audit entries go to a temporary file, not the real log.
 """
@@ -17,7 +18,7 @@ sys.path.insert(0, str(BACKEND))
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app import main as api  # noqa: E402
-from app.models import DemoBundle  # noqa: E402
+from app.models import BenchmarkResult, DemoBundle  # noqa: E402
 from app.privacy import audit  # noqa: E402
 
 DEFAULT_OUT = BACKEND.parent / "frontend" / "public" / "demo.json"
@@ -33,7 +34,7 @@ def _json(r):
     return r.json()
 
 
-def make_bundle(fixture: str | None = None) -> dict:
+def make_bundle(fixture: str | None = None, benchmark: Path | None = None) -> dict:
     saved_path, saved_store = audit.PATH, dict(api.STORE)
     with tempfile.TemporaryDirectory() as tmp:
         audit.PATH = Path(tmp) / "audit.jsonl"
@@ -57,9 +58,15 @@ def make_bundle(fixture: str | None = None) -> dict:
             r = client.get(f"/api/report/{trace['trace_id']}")
             if r.status_code != 200:
                 raise BundleError(f"report failed: {r.status_code}")
+            bench = None
+            if benchmark is not None:
+                try:
+                    bench = BenchmarkResult.model_validate(json.loads(benchmark.read_text())).model_dump()
+                except Exception as exc:
+                    raise BundleError(f"benchmark file {benchmark} is not a BenchmarkResult: {type(exc).__name__}")
             bundle = {"contract_version": "1.0", "scenario": summary, "trace": trace,
                       "audit": _json(client.get("/api/audit", params={"scenario_id": sid}))["entries"],
-                      "benchmark": None, "report_html": r.text}
+                      "benchmark": bench, "report_html": r.text}
             return DemoBundle.model_validate(bundle).model_dump(by_alias=True)
         finally:
             audit.PATH = saved_path
@@ -71,10 +78,11 @@ def make_bundle(fixture: str | None = None) -> dict:
 def main_cli(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--fixture", help="hand-written scenario H1..H8 instead of the simulator")
+    ap.add_argument("--benchmark", type=Path, help="saved BenchmarkResult JSON to embed")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = ap.parse_args(argv)
     try:
-        bundle = make_bundle(args.fixture)
+        bundle = make_bundle(args.fixture, args.benchmark)
     except BundleError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
