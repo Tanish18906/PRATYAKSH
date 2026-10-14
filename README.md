@@ -77,13 +77,13 @@ Instead of merely searching logs, PRATYAKSH starts from the **leaked content its
 | **Privacy Preservation** | Centralized log ingestion often duplicates and exposes raw PII. | **Zero-Raw-Data Sketches**: Compares keyed 64-bit HMAC sketches; raw records never cross boundaries. |
 | **Data Masking** | Static masking or unrestricted analyst access. | **Masked by Default + Audited Reveal**: Mandatory cryptographic masking; reveals require logged justification. |
 | **Containment Guidance** | Generic advice ("reset passwords"). | **Greedy Chokepoints**: Calculates exact permission/channel closure covering maximum path likelihood. |
-| **Forensic Uncertainty** | Binary assumptions or fabricated confidence. | **Calibrated Likelihood & Evidence Entropy**: Recommends which log source would maximize information gain. |
+| **Forensic Uncertainty** | Binary assumptions or fabricated confidence. | **Relative Likelihood & Evidence Entropy**: Recommends which log source would maximize information gain. |
 
 ---
 
 ## 🔬 Mathematical & Algorithmic Foundations
 
-### 1. Zero-Exposure Bottom-$k$ MinHash Containment
+### 1. Keyed Bottom-$k$ MinHash Containment
 Raw records are never ingested by the tracing engine. Each candidate dataset export $E$ and the leaked file $L$ compute a bottom-$k$ sketch ($k = 512$) on normalized identifier columns (`customer_id`, `email`, `phone`, `policy_no`):
 
 $$\text{hash}(x) = \text{HMAC-SHA256}(K_{\text{case}}, \text{normalize}(x))[:8]$$
@@ -239,7 +239,7 @@ pip install -r requirements.txt
 pytest -q
 
 # Start the FastAPI backend server (port 8000)
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main:app --port 8000 --reload
 ```
 
 Verify backend health:
@@ -319,30 +319,15 @@ PRATYAKSH evaluates performance against three traditional industry baselines acr
 * **B2 (Biggest Exporter)**: Attributed to the user or service account with the highest gross export volume.
 * **B3 & B4**: Baseline origin models using largest or most recent export timestamps.
 
-```
-       Top-1 Attribution Accuracy vs. Log Drop Rate
-  100% |   ┌─────┐
-       |   │     │    ┌─────┐
-   80% |   │     │    │     │    ┌─────┐
-       |   │  P  │    │  P  │    │  P  │    ┌─────┐
-   60% |   │  R  │    │  R  │    │  R  │    │  P  │
-       |   │  A  │    │  A  │    │  A  │    │  R  │
-   40% |   │  T  │ ┌┐ │  T  │ ┌┐ │  T  │ ┌┐ │  A  │ ┌┐
-       |   │  Y  │ ││ │  Y  │ ││ │  Y  │ ││ │  T  │ ││
-   20% |   │  A  │ ││ │  A  │ ││ │  A  │ ││ │  Y  │ ││
-       |   │  K  │ ││ │  K  │ ││ │  K  │ ││ │  A  │ ││
-    0% +───┴─────┴─┴┴─┴─────┴─┴┴─┴─────┴─┴┴─┴─────┴─┴┴───
-             0%          20%         40%         60%
-                         Log Loss Rate
-             [P] PRATYAKSH    [] Naive Baselines
-```
-*(Benchmark figures are computed dynamically over synthetic test distributions; run `python -m backend.app.bench.run` to evaluate).*
+> **Status: no benchmark has been run yet.** No accuracy figure is claimed here. When the benchmark runner exists,
+> results will be produced on seeds 50 to 199 (tuning uses seeds 0 to 49 only) and reported as measured on
+> **synthetic data from our own simulator**, not as real-world accuracy.
 
 ---
 
 ## 🛡 Security & Privacy Guardrails
 
-* **Zero-Raw PII Ingestion**: Engine operations occur solely over hashes and schema metadata.
+* **Hash-Only Matching**: The engine compares keyed sketches and schema metadata, never raw rows.
 * **Cryptographic Salting**: HMAC keys are randomized per case scenario, neutralizing rainbow table attacks on lower-entropy identifiers (e.g. phone numbers).
 * **Immutability & Accountability**: All data unmasking, report downloads, and trace executions write structured events to `backend/data/audit.jsonl`.
 * **Honest Limitations**:

@@ -28,3 +28,5 @@ ENGINE = {
     "TOP_K": 5, "CHOKE_MAX": 3, "EVIDENCE_MAX": 3,
     "ENGINE_VERSION": "1.0.0",
 }
+
+CONTRACT_VERSION = "1.0"  # docs/01_DATA_CONTRACT.md
