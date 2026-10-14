@@ -72,7 +72,7 @@ def _score(leak: dict, art: dict) -> dict:
         return cand
     if not shared:
         cand["notes"].append("no shared identifier columns; containment set to 0.05")
-    ratio = min(max(leak["row_count"] / art["row_count"], 0.01), 1.0)
+    ratio = min(max(leak["row_count"] / art["row_count"] if art["row_count"] else 0.0, 0.01), 1.0)
     fsim = format_sim(leak, art)
     gap_h = max(0.0, (created - newest).total_seconds() / 3600.0)
     wm = -min(art["arrivals_per_hour"] * gap_h, CFG["WM_CAP"]) if ratio >= CFG["WM_RATIO_MIN"] else 0.0

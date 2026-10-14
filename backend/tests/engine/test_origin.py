@@ -95,3 +95,13 @@ def test_pin_canary_picks_most_hits_and_ignores_unknown():
     assert pinned is None and notes
     sc2["leak_sample"]["canary_hits"] = []
     assert pin_canary(sc2) == (None, [])
+
+
+def test_empty_export_does_not_divide_by_zero():
+    from app.engine.trace import trace
+    sc = build("H1")
+    art(sc, "art:E2")["row_count"] = 0
+    c = table(sc)["art:E2"]
+    assert c["specificity"] == 0.01  # least specific, same as the clip floor
+    r = trace(sc)
+    assert r["origin_candidates"][0]["artifact_id"] == "art:E1"
