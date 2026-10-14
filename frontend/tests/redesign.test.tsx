@@ -4,6 +4,7 @@ import { displayName, prettyIds, formatDay, wholePercent } from '../src/utils/na
 import { originContainment, routeSentence, routeStops, sourceSentence, whyBullets } from '../src/utils/answer';
 import { computeLayout, computePositions, graphCards, PAD, ROUTE_H, SIDE_H } from '../src/utils/graph';
 import { DemoBundle } from '../src/types/contract';
+import { appReducer, initialState } from '../src/state/reducer';
 import demo from '../public/demo.json';
 
 const bundle = demo as DemoBundle;
@@ -33,7 +34,8 @@ test('answer sentences are derived from the top hypothesis without ids', () => {
   assert.equal(routeSentence(t.hypotheses[0], bundle.scenario),
     'Ravi Menon: Bi Warehouse, then Ravi Menon laptop, then Telegram Leak Channel');
   assert.deepEqual(whyBullets(t.hypotheses[0]).map((e) => e.kind), ['fingerprint', 'observed', 'inferred']);
-  assert.deepEqual(whyBullets(t.hypotheses[1]).map((e) => e.kind), ['fingerprint', 'inferred']);
+  const reyan = t.hypotheses.find((h) => h.actors.includes('act:reyan-nivan'))!;
+  assert.deepEqual(whyBullets(reyan).map((e) => e.kind), ['fingerprint', 'inferred']);
 });
 
 test('preset layout puts the selected route on one line, left to right, other routes on their own lanes', () => {
@@ -69,4 +71,13 @@ test('dates and likelihoods use the copy rules', () => {
   assert.equal(formatDay('2026-10-09T02:10:00Z'), '9 Oct, 02:10 UTC');
   assert.equal(formatDay(null), 'Time unknown');
   assert.equal(wholePercent(0.8791), '88%');
+});
+
+test('offline replay opens at the empty state; the trace waits for Export and trace', () => {
+  const next = appReducer(initialState, { type: 'LOAD_BUNDLE', payload: { scenario: bundle.scenario, trace: bundle.trace,
+    audit: bundle.audit, benchmark: bundle.benchmark, report_html: bundle.report_html, offlineReplay: true } });
+  assert.equal(next.trace, null);
+  assert.equal(next.reportHtml, null);
+  assert.equal(next.activeTab, 'investigation');
+  assert.ok(next.scenario && next.offlineReplay);
 });

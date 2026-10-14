@@ -7,12 +7,12 @@ export type BenchmarkView = 'origin' | 'actor';
 
 export const BENCHMARK_METHODS: Record<BenchmarkView, Array<{ id: string; label: string }>> = {
   origin: [
-    { id: 'pugmark', label: 'PUGMARK' },
+    { id: 'pugmark', label: 'PRATYAKSH' },
     { id: 'B3_largest_export', label: 'B3 largest export' },
     { id: 'B4_most_recent_export', label: 'B4 most recent export' },
   ],
   actor: [
-    { id: 'pugmark', label: 'PUGMARK' },
+    { id: 'pugmark', label: 'PRATYAKSH' },
     { id: 'B1_last_accessor', label: 'B1 last accessor' },
     { id: 'B2_biggest_exporter', label: 'B2 biggest exporter' },
   ],

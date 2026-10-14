@@ -11,6 +11,14 @@ import {
 } from '../types/contract';
 import type { sendCanaryAlert } from '../api/client';
 
+// Export and trace shows these steps in order while the real calls run underneath
+export const TRACE_STEPS = [
+  'Exporting the leaked file from the channel...',
+  'Fingerprinting the leaked records against company exports...',
+  'Tracing custody routes through the event logs...',
+  'Ranking routes and finding where to cut...',
+];
+
 export type ActiveTab = 'investigation' | 'origin' | 'report' | 'audit' | 'benchmark';
 
 export interface ControlsState {
@@ -236,17 +244,17 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         error: action.payload ? null : state.error,
       };
 
+    // Offline replay starts at the empty state like a live run; the bundled trace arrives on Export and trace
     case 'LOAD_BUNDLE': {
-      const topPath = action.payload.trace.hypotheses.length > 0 ? action.payload.trace.hypotheses[0].path_id : null;
       return {
         ...state,
         scenario: action.payload.scenario,
         leakSample: action.payload.scenario.leak_sample,
-        trace: action.payload.trace,
+        trace: null,
         auditEntries: action.payload.audit,
         benchmark: action.payload.benchmark,
-        reportHtml: action.payload.report_html,
-        selectedPathId: topPath,
+        reportHtml: null,
+        selectedPathId: null,
         offlineReplay: action.payload.offlineReplay,
         controls: {
           archetype: action.payload.scenario.archetype,

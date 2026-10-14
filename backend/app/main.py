@@ -108,7 +108,7 @@ async def lifespan(_app):
     yield
 
 
-app = FastAPI(title="PUGMARK", version=ENGINE["ENGINE_VERSION"], lifespan=lifespan)
+app = FastAPI(title="PRATYAKSH", version=ENGINE["ENGINE_VERSION"], lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"],
                    allow_headers=["*"])
 

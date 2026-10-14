@@ -1,10 +1,13 @@
 // AppContext: Central React context for PUGMARK
 // Implements investigation flows from docs/UI_UX_DESIGN.md section 5 and docs/FRONTEND.md section 8 & 9
 
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { AppState, initialState, appReducer, ActiveTab, ControlsState } from './reducer';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
+import { AppState, initialState, appReducer, ActiveTab, ControlsState, TRACE_STEPS } from './reducer';
 import * as api from '../api/client';
-import type { TraceResult } from '../types/contract';
+import type { DemoBundle, TraceResult } from '../types/contract';
+
+const STEP_MS = 2500; // four steps, about 10 s in all
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 interface AppContextValue {
   state: AppState;
@@ -29,11 +32,13 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const bundleRef = useRef<DemoBundle | null>(null);
 
   const loadOfflineFallback = useCallback(async (errorMessage?: string) => {
     try {
       dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Loading investigation...' } });
       const bundle = await api.fetchOfflineDemoBundle();
+      bundleRef.current = bundle;
       dispatch({
         type: 'LOAD_BUNDLE',
         payload: {
@@ -184,33 +189,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Action: Export and Trace (core demo flow)
   const handleExportAndTrace = useCallback(async (messageId: number) => {
     if (!state.scenario) return;
-
-    if (state.offlineReplay) {
-      // In offline replay, demo bundle trace is already available
-      dispatch({ type: 'SET_ACTIVE_TAB', payload: 'investigation' });
-      return;
-    }
+    const scenario = state.scenario;
+    const bundle = bundleRef.current;
+    const offline = state.offlineReplay;
 
     try {
-      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Exporting simulated leak...' } });
       dispatch({ type: 'SET_ERROR', payload: null });
+      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: TRACE_STEPS[0] } });
 
-      // 1. Export leaked sample from simulated discovery
-      const exportRes = await api.exportLeak({
-        scenario_id: state.scenario.id,
-        message_id: messageId,
-      });
-      dispatch({ type: 'SET_LEAK_SAMPLE', payload: exportRes.leak_sample });
-      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Tracing possible custody paths...' } });
+      // The real work starts at once; the steps below only pace what the viewer sees
+      const work = (async () => {
+        if (offline) {
+          if (!bundle) throw new Error('Offline replay data is unavailable.');
+          return bundle.trace;
+        }
+        const exportRes = await api.exportLeak({ scenario_id: scenario.id, message_id: messageId });
+        dispatch({ type: 'SET_LEAK_SAMPLE', payload: exportRes.leak_sample });
+        return api.traceScenario({ scenario_id: scenario.id, top_k: 5 });
+      })();
+      work.catch(() => {}); // awaited below; avoids an unhandled rejection while the steps run
 
-      // 2. Run tracing engine
-      const traceRes = await api.traceScenario({
-        scenario_id: state.scenario.id,
-        top_k: 5,
-      });
+      for (let i = 1; i < TRACE_STEPS.length; i++) {
+        await sleep(STEP_MS);
+        dispatch({ type: 'SET_BUSY', payload: { busy: true, message: TRACE_STEPS[i] } });
+      }
+      await sleep(STEP_MS);
+      const traceRes = await work;
       dispatch({ type: 'SET_TRACE', payload: traceRes });
 
-      await loadReportAndAudit(traceRes);
+      if (offline && bundle) {
+        dispatch({ type: 'SET_REPORT_HTML', payload: bundle.report_html });
+      } else {
+        await loadReportAndAudit(traceRes);
+      }
     } catch (err: unknown) {
       dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The tracing engine could not complete this operation.') });
     } finally {

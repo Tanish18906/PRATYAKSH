@@ -18,6 +18,7 @@ import RevealDialog from './components/RevealDialog';
 import InjectDialog from './components/InjectDialog';
 import ErrorMessage from './components/ErrorMessage';
 import { prettyIds } from './utils/names';
+import { TRACE_STEPS } from './state/reducer';
 
 const FOOTER = 'Simulated data. Rankings are relative likelihoods, not a finding of responsibility.';
 
@@ -72,7 +73,8 @@ const Dashboard: React.FC = () => {
   const sample = leakSample || scenario?.leak_sample || null;
   const caseName = scenario ? `${scenario.company}, case ${scenario.leak_sample.id.split(':').pop()}` : null;
   // Stage dots: 1 Discover, 2 Match (exporting), 3 Trace (engine running), 4 Act (result shown)
-  const stage = trace ? 4 : busy && busyMessage?.startsWith('Tracing') ? 3 : busy && busyMessage?.startsWith('Exporting') ? 2 : scenario ? 1 : 0;
+  const step = busy && busyMessage ? TRACE_STEPS.indexOf(busyMessage) : -1;
+  const stage = trace ? 4 : step >= 2 ? 3 : step >= 0 ? 2 : scenario ? 1 : 0;
 
   const jumpTo = (target: 'cut' | 'collect') => {
     const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -121,7 +123,7 @@ const Dashboard: React.FC = () => {
 
             <div className="flex min-h-[560px] flex-col gap-3 xl:min-h-0">
               <ErrorMessage message={error} onDismiss={dismissError} />
-              <AnswerBanner trace={trace} names={scenario} busy={busy} onJump={jumpTo} />
+              <AnswerBanner trace={trace} names={scenario} busy={busy} step={step} onJump={jumpTo} />
               <div className="min-h-0 flex-1">
                 <ProvenanceGraph
                   graph={trace?.graph || null}
@@ -223,7 +225,7 @@ const Dashboard: React.FC = () => {
         />
       )}
 
-      {busy && busyMessage && (
+      {busy && busyMessage && step < 0 && (
         <div role="status" aria-live="polite" className="fixed bottom-8 right-4 z-30 flex items-center gap-2.5 rounded-ctl border border-line bg-surface px-3 py-2 text-[13px] text-ink-2 shadow-pop">
           <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-accent border-t-transparent" aria-hidden="true" />
           {busyMessage}

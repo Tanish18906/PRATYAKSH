@@ -1895,7 +1895,7 @@
     "rank": 1,
     "path_id": "hyp:1",
     "origin_artifact": "art:E1",
-    "probability": 0.8791,
+    "probability": 0.8142,
     "score": 3.2807,
     "score_parts": {
      "origin_fit": 1.0607,
@@ -1963,7 +1963,69 @@
     "rank": 2,
     "path_id": "hyp:2",
     "origin_artifact": "art:E1",
-    "probability": 0.0235,
+    "probability": 0.0739,
+    "score": 0.8807,
+    "score_parts": {
+     "origin_fit": 1.0607,
+     "path_cost": 0.6,
+     "anomaly": 0.7
+    },
+    "hops": [
+     {
+      "from_loc": "sys:bi-warehouse",
+      "to_loc": "ext:unknown-host",
+      "actor": "act:partner-api-key-7",
+      "ts": "2026-10-09T10:30:00Z",
+      "kind": "observed",
+      "event_id": "evt:001358",
+      "action": "api_call",
+      "rows": 3,
+      "est_loss": null,
+      "note": ""
+     },
+     {
+      "from_loc": "ext:unknown-host",
+      "to_loc": "ext:telegram-leak-channel",
+      "actor": "act:partner-api-key-7",
+      "ts": null,
+      "kind": "inferred",
+      "event_id": null,
+      "action": null,
+      "rows": null,
+      "est_loss": null,
+      "note": "No log was found for this move."
+     }
+    ],
+    "actors": [
+     "act:partner-api-key-7"
+    ],
+    "summary_text": "art:E1 (created by etl-nightly at 2026-10-09T02:10:00Z) is the likely source: 100% of the leaked records are in it. partner-api-key-7 pulled through the API it from Bi Warehouse to Unknown Host at 2026-10-09T10:30:00Z. A move from Unknown Host to Telegram Leak Channel by partner-api-key-7 is inferred because no log was found.",
+    "evidence": [
+     {
+      "kind": "fingerprint",
+      "text": "100% of the leaked identifiers appear in art:E1; 9 of 9 format attributes match; watermark term -0.91.",
+      "ts": "2026-10-09T02:10:00Z",
+      "event_id": null
+     },
+     {
+      "kind": "observed",
+      "text": "partner-api-key-7 pulled through the API it from Bi Warehouse to Unknown Host at 2026-10-09T10:30:00Z.",
+      "ts": "2026-10-09T10:30:00Z",
+      "event_id": "evt:001358"
+     },
+     {
+      "kind": "inferred",
+      "text": "A move from Unknown Host to Telegram Leak Channel by partner-api-key-7 is inferred because no log was found.",
+      "ts": null,
+      "event_id": null
+     }
+    ]
+   },
+   {
+    "rank": 3,
+    "path_id": "hyp:3",
+    "origin_artifact": "art:E1",
+    "probability": 0.0218,
     "score": -0.3414,
     "score_parts": {
      "origin_fit": 1.0607,
@@ -2022,10 +2084,10 @@
     ]
    },
    {
-    "rank": 3,
-    "path_id": "hyp:3",
+    "rank": 4,
+    "path_id": "hyp:4",
     "origin_artifact": "art:E1",
-    "probability": 0.0193,
+    "probability": 0.0179,
     "score": -0.5387,
     "score_parts": {
      "origin_fit": 1.0607,
@@ -2084,10 +2146,10 @@
     ]
    },
    {
-    "rank": 4,
-    "path_id": "hyp:4",
+    "rank": 5,
+    "path_id": "hyp:5",
     "origin_artifact": "art:E1",
-    "probability": 0.0133,
+    "probability": 0.0123,
     "score": -0.9096,
     "score_parts": {
      "origin_fit": 1.0607,
@@ -2144,124 +2206,67 @@
       "event_id": null
      }
     ]
-   },
-   {
-    "rank": 5,
-    "path_id": "hyp:5",
-    "origin_artifact": "art:E1",
-    "probability": 0.0121,
-    "score": -1.0052,
-    "score_parts": {
-     "origin_fit": 1.0607,
-     "path_cost": 2.5062,
-     "anomaly": 0.7339
-    },
-    "hops": [
-     {
-      "from_loc": "sys:bi-warehouse",
-      "to_loc": "ep:arohan-vey",
-      "actor": "act:arohan-vey",
-      "ts": null,
-      "kind": "inferred",
-      "event_id": null,
-      "action": null,
-      "rows": null,
-      "est_loss": 0.3656,
-      "note": "No log was found for this move."
-     },
-     {
-      "from_loc": "ep:arohan-vey",
-      "to_loc": "ext:telegram-leak-channel",
-      "actor": "act:arohan-vey",
-      "ts": null,
-      "kind": "inferred",
-      "event_id": null,
-      "action": null,
-      "rows": null,
-      "est_loss": null,
-      "note": "No log was found for this move."
-     }
-    ],
-    "actors": [
-     "act:arohan-vey"
-    ],
-    "summary_text": "art:E1 (created by etl-nightly at 2026-10-09T02:10:00Z) is the likely source: 100% of the leaked records are in it. A move from Bi Warehouse to Arohan Vey laptop by Arohan Vey is inferred because no log was found. A move from Arohan Vey laptop to Telegram Leak Channel by Arohan Vey is inferred because no log was found.",
-    "evidence": [
-     {
-      "kind": "fingerprint",
-      "text": "100% of the leaked identifiers appear in art:E1; 9 of 9 format attributes match; watermark term -0.91.",
-      "ts": "2026-10-09T02:10:00Z",
-      "event_id": null
-     },
-     {
-      "kind": "inferred",
-      "text": "A move from Bi Warehouse to Arohan Vey laptop by Arohan Vey is inferred because no log was found.",
-      "ts": null,
-      "event_id": null
-     },
-     {
-      "kind": "inferred",
-      "text": "A move from Arohan Vey laptop to Telegram Leak Channel by Arohan Vey is inferred because no log was found.",
-      "ts": null,
-      "event_id": null
-     }
-    ]
    }
   ],
   "actor_ranking": [
    {
     "actor": "act:ravi-menon",
-    "marginal": 0.8791,
+    "marginal": 0.8142,
     "top_path_id": "hyp:1"
    },
    {
-    "actor": "act:reyan-nivan",
-    "marginal": 0.0256,
+    "actor": "act:partner-api-key-7",
+    "marginal": 0.0739,
     "top_path_id": "hyp:2"
    },
    {
-    "actor": "act:kairav-teral",
-    "marginal": 0.0193,
+    "actor": "act:reyan-nivan",
+    "marginal": 0.0237,
     "top_path_id": "hyp:3"
    },
    {
-    "actor": "act:meena-iyer",
-    "marginal": 0.0133,
+    "actor": "act:kairav-teral",
+    "marginal": 0.0179,
     "top_path_id": "hyp:4"
    },
    {
-    "actor": "act:arohan-vey",
-    "marginal": 0.0121,
+    "actor": "act:meena-iyer",
+    "marginal": 0.0123,
     "top_path_id": "hyp:5"
    },
    {
+    "actor": "act:arohan-vey",
+    "marginal": 0.0112,
+    "top_path_id": null
+   },
+   {
     "actor": "act:devira-mivra",
-    "marginal": 0.0105,
+    "marginal": 0.0097,
     "top_path_id": null
    },
    {
     "actor": "act:nivika-soral",
-    "marginal": 0.0089,
+    "marginal": 0.0082,
     "top_path_id": null
    },
    {
     "actor": "act:ishana-korin",
-    "marginal": 0.0078,
+    "marginal": 0.0072,
     "top_path_id": null
    },
    {
     "actor": "act:riyal-rivan",
-    "marginal": 0.0078,
+    "marginal": 0.0072,
     "top_path_id": null
    },
    {
     "actor": "act:tanira-duvan",
-    "marginal": 0.0078,
+    "marginal": 0.0072,
     "top_path_id": null
    },
    {
     "actor": "act:vihan-naval",
-    "marginal": 0.0078,
+    "marginal": 0.0072,
     "top_path_id": null
    }
   ],
@@ -2272,51 +2277,55 @@
    },
    {
     "location": "ep:ravi-menon",
-    "marginal": 0.8791
+    "marginal": 0.8142
+   },
+   {
+    "location": "ext:unknown-host",
+    "marginal": 0.0739
    },
    {
     "location": "ep:reyan-nivan",
-    "marginal": 0.0235
+    "marginal": 0.0218
    },
    {
     "location": "ep:kairav-teral",
-    "marginal": 0.0193
+    "marginal": 0.0179
    },
    {
     "location": "ep:meena-iyer",
-    "marginal": 0.0133
+    "marginal": 0.0123
    },
    {
     "location": "ep:arohan-vey",
-    "marginal": 0.0121
+    "marginal": 0.0112
    },
    {
     "location": "ep:devira-mivra",
-    "marginal": 0.0105
+    "marginal": 0.0097
    },
    {
     "location": "ep:nivika-soral",
-    "marginal": 0.0089
+    "marginal": 0.0082
    },
    {
     "location": "ep:ishana-korin",
-    "marginal": 0.0078
+    "marginal": 0.0072
    },
    {
     "location": "ep:riyal-rivan",
-    "marginal": 0.0078
+    "marginal": 0.0072
    },
    {
     "location": "ep:tanira-duvan",
-    "marginal": 0.0078
+    "marginal": 0.0072
    },
    {
     "location": "ep:vihan-naval",
-    "marginal": 0.0078
+    "marginal": 0.0072
    },
    {
     "location": "sys:object-store",
-    "marginal": 0.0021
+    "marginal": 0.0019
    }
   ],
   "chokepoints": [
@@ -2325,27 +2334,27 @@
     "item_type": "permission",
     "item_id": "perm:act:ravi-menon@egress",
     "label": "Block outbound uploads from Ravi Menon's laptop",
-    "marginal": 0.8791,
-    "cumulative_coverage": 0.8791,
+    "marginal": 0.8142,
+    "cumulative_coverage": 0.8142,
     "action_text": "Block outbound uploads from Ravi Menon's laptop"
    },
    {
     "rank": 2,
-    "item_type": "permission",
-    "item_id": "perm:act:reyan-nivan@sys:bi-warehouse",
-    "label": "Revoke Reyan Nivan's access to Bi Warehouse",
-    "marginal": 0.0256,
-    "cumulative_coverage": 0.9047,
-    "action_text": "Revoke Reyan Nivan's access to Bi Warehouse"
+    "item_type": "channel",
+    "item_id": "ch:ext:unknown-host",
+    "label": "Block transfers to Unknown Host",
+    "marginal": 0.0739,
+    "cumulative_coverage": 0.8881,
+    "action_text": "Block transfers to Unknown Host"
    },
    {
     "rank": 3,
     "item_type": "permission",
-    "item_id": "perm:act:kairav-teral@egress",
-    "label": "Block outbound uploads from Kairav Teral's laptop",
-    "marginal": 0.0193,
-    "cumulative_coverage": 0.924,
-    "action_text": "Block outbound uploads from Kairav Teral's laptop"
+    "item_id": "perm:act:reyan-nivan@sys:bi-warehouse",
+    "label": "Revoke Reyan Nivan's access to Bi Warehouse",
+    "marginal": 0.0237,
+    "cumulative_coverage": 0.9118,
+    "action_text": "Revoke Reyan Nivan's access to Bi Warehouse"
    }
   ],
   "recommended_evidence": [
@@ -2355,29 +2364,29 @@
      "from_loc": "ep:ravi-menon",
      "to_loc": "ext:telegram-leak-channel"
     },
-    "mass": 0.8791,
-    "informativeness": 0.5318,
+    "mass": 0.8142,
+    "informativeness": 0.6926,
     "request_text": "Endpoint, proxy or DLP logs for Ravi Menon's laptop between 2026-10-09T02:10:00Z and 2026-10-12T08:30:00Z"
    },
    {
     "rank": 2,
     "hop_ref": {
-     "from_loc": "ep:reyan-nivan",
+     "from_loc": "ext:unknown-host",
      "to_loc": "ext:telegram-leak-channel"
     },
-    "mass": 0.0235,
-    "informativeness": 0.1606,
-    "request_text": "Endpoint, proxy or DLP logs for Reyan Nivan's laptop between 2026-10-09T02:10:00Z and 2026-10-12T08:30:00Z"
+    "mass": 0.0739,
+    "informativeness": 0.3802,
+    "request_text": "Network logs for transfers from Unknown Host"
    },
    {
     "rank": 3,
     "hop_ref": {
-     "from_loc": "sys:bi-warehouse",
-     "to_loc": "ep:reyan-nivan"
+     "from_loc": "ep:reyan-nivan",
+     "to_loc": "ext:telegram-leak-channel"
     },
-    "mass": 0.0235,
-    "informativeness": 0.1606,
-    "request_text": "Bi Warehouse audit logs (src:bi-warehouse) between 2026-10-09T02:10:00Z and 2026-10-12T08:30:00Z"
+    "mass": 0.0218,
+    "informativeness": 0.1512,
+    "request_text": "Endpoint, proxy or DLP logs for Reyan Nivan's laptop between 2026-10-09T02:10:00Z and 2026-10-12T08:30:00Z"
    }
   ],
   "loss_estimates": {
@@ -2414,6 +2423,11 @@
      "label": "Telegram Leak Channel"
     },
     {
+     "id": "ext:unknown-host",
+     "kind": "external",
+     "label": "Unknown Host"
+    },
+    {
      "id": "ep:reyan-nivan",
      "kind": "endpoint",
      "label": "Reyan Nivan laptop"
@@ -2427,11 +2441,6 @@
      "id": "ep:meena-iyer",
      "kind": "endpoint",
      "label": "Meena Iyer laptop"
-    },
-    {
-     "id": "ep:arohan-vey",
-     "kind": "endpoint",
-     "label": "Arohan Vey laptop"
     }
    ],
    "edges": [
@@ -2476,6 +2485,30 @@
      "label": "Ravi Menon: unlogged channel"
     },
     {
+     "id": "e:sys:bi-warehouse>ext:unknown-host:observed:evt:001358",
+     "from": "sys:bi-warehouse",
+     "to": "ext:unknown-host",
+     "kind": "observed",
+     "ts": "2026-10-09T10:30:00Z",
+     "event_id": "evt:001358",
+     "path_ids": [
+      "hyp:2"
+     ],
+     "label": "partner-api-key-7: api_call, 3 rows"
+    },
+    {
+     "id": "e:ext:unknown-host>ext:telegram-leak-channel:inferred:hid:act:partner-api-key-7",
+     "from": "ext:unknown-host",
+     "to": "ext:telegram-leak-channel",
+     "kind": "inferred",
+     "ts": null,
+     "event_id": null,
+     "path_ids": [
+      "hyp:2"
+     ],
+     "label": "partner-api-key-7: unlogged channel"
+    },
+    {
      "id": "e:sys:bi-warehouse>ep:reyan-nivan:inferred:hid:act:reyan-nivan",
      "from": "sys:bi-warehouse",
      "to": "ep:reyan-nivan",
@@ -2483,7 +2516,7 @@
      "ts": null,
      "event_id": null,
      "path_ids": [
-      "hyp:2"
+      "hyp:3"
      ],
      "label": "Reyan Nivan: log missing (about 37% of bi-warehouse audit logs lost)"
     },
@@ -2495,7 +2528,7 @@
      "ts": null,
      "event_id": null,
      "path_ids": [
-      "hyp:2"
+      "hyp:3"
      ],
      "label": "Reyan Nivan: unlogged channel"
     },
@@ -2507,7 +2540,7 @@
      "ts": null,
      "event_id": null,
      "path_ids": [
-      "hyp:3"
+      "hyp:4"
      ],
      "label": "Kairav Teral: log missing (about 37% of bi-warehouse audit logs lost)"
     },
@@ -2519,7 +2552,7 @@
      "ts": null,
      "event_id": null,
      "path_ids": [
-      "hyp:3"
+      "hyp:4"
      ],
      "label": "Kairav Teral: unlogged channel"
     },
@@ -2531,7 +2564,7 @@
      "ts": null,
      "event_id": null,
      "path_ids": [
-      "hyp:4"
+      "hyp:5"
      ],
      "label": "Meena Iyer: log missing (about 37% of bi-warehouse audit logs lost)"
     },
@@ -2543,33 +2576,9 @@
      "ts": null,
      "event_id": null,
      "path_ids": [
-      "hyp:4"
+      "hyp:5"
      ],
      "label": "Meena Iyer: unlogged channel"
-    },
-    {
-     "id": "e:sys:bi-warehouse>ep:arohan-vey:inferred:hid:act:arohan-vey",
-     "from": "sys:bi-warehouse",
-     "to": "ep:arohan-vey",
-     "kind": "inferred",
-     "ts": null,
-     "event_id": null,
-     "path_ids": [
-      "hyp:5"
-     ],
-     "label": "Arohan Vey: log missing (about 37% of bi-warehouse audit logs lost)"
-    },
-    {
-     "id": "e:ep:arohan-vey>ext:telegram-leak-channel:inferred:hid:act:arohan-vey",
-     "from": "ep:arohan-vey",
-     "to": "ext:telegram-leak-channel",
-     "kind": "inferred",
-     "ts": null,
-     "event_id": null,
-     "path_ids": [
-      "hyp:5"
-     ],
-     "label": "Arohan Vey: unlogged channel"
     }
    ]
   },
@@ -2580,7 +2589,7 @@
  "audit": [
   {
    "id": "aud:0001",
-   "ts": "2026-10-14T08:50:04Z",
+   "ts": "2026-10-14T11:16:58Z",
    "who": "investigator-demo",
    "action": "scenario_generate",
    "scenario_id": "scn:A1-42-L40-C",
@@ -2590,7 +2599,7 @@
   },
   {
    "id": "aud:0002",
-   "ts": "2026-10-14T08:50:04Z",
+   "ts": "2026-10-14T11:16:58Z",
    "who": "investigator-demo",
    "action": "telegram_export",
    "scenario_id": "scn:A1-42-L40-C",
@@ -2600,7 +2609,7 @@
   },
   {
    "id": "aud:0003",
-   "ts": "2026-10-14T08:50:04Z",
+   "ts": "2026-10-14T11:16:58Z",
    "who": "investigator-demo",
    "action": "trace",
    "scenario_id": "scn:A1-42-L40-C",
@@ -2610,7 +2619,7 @@
   },
   {
    "id": "aud:0004",
-   "ts": "2026-10-14T08:50:04Z",
+   "ts": "2026-10-14T11:16:58Z",
    "who": "investigator-demo",
    "action": "report_export",
    "scenario_id": "scn:A1-42-L40-C",
@@ -2620,5 +2629,5 @@
   }
  ],
  "benchmark": null,
- "report_html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Incident report trc:A1-42-L40-C</title>\n<style>\n  body { font-family: system-ui, sans-serif; max-width: 920px; margin: 2rem auto; padding: 0 1rem; color: #1b1f24; line-height: 1.5; }\n  h1 { font-size: 1.6rem; margin-bottom: .2rem; }\n  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: .2rem; }\n  table { border-collapse: collapse; width: 100%; font-size: .9rem; }\n  th, td { border: 1px solid #d0d7de; padding: .35rem .5rem; text-align: left; vertical-align: top; }\n  th { background: #f6f8fa; }\n  .badge { display: inline-block; background: #fff3cd; border: 1px solid #e0c36a; padding: .1rem .5rem; border-radius: 4px; font-size: .8rem; font-weight: 600; }\n  .note { background: #f6f8fa; border-left: 4px solid #8c959f; padding: .5rem .8rem; margin: .8rem 0; }\n  .muted { color: #57606a; font-size: .9rem; }\n  li { margin: .2rem 0; }\n</style>\n</head>\n<body>\n<h1>PUGMARK incident report</h1>\n<p><span class=\"badge\">SIMULATED</span> <span class=\"muted\">All data in this report is synthetic. Trace trc:A1-42-L40-C for scenario scn:A1-42-L40-C.</span></p>\n<h2>1. What was found</h2>\n<table><tr><th>Item</th><th>Value</th></tr><tr><td>Company (simulated)</td><td>Nova Health</td></tr><tr><td>Found at</td><td>Telegram Leak Channel (ext:telegram-leak-channel)</td></tr><tr><td>Found (UTC)</td><td>2026-10-12T08:30:00Z</td></tr><tr><td>File</td><td>nova_customers_cg.csv</td></tr><tr><td>Rows</td><td>47014</td></tr><tr><td>Columns</td><td>full_name, phone, policy_no, created_at</td></tr><tr><td>Newest record in file (UTC)</td><td>2026-10-09T01:51:22Z</td></tr><tr><td>Systems / actors / events / exports</td><td>34 / 23 / 857 / 6</td></tr></table>\n<p class=\"muted\">Masked preview (first rows):</p>\n<table><tr><th>full_name</th><th>phone</th><th>policy_no</th><th>created_at</th></tr><tr><td>P. R.</td><td>+91-73******83</td><td>NH**********02</td><td>***</td></tr><tr><td>R. L.</td><td>+91-73******02</td><td>NH**********03</td><td>***</td></tr><tr><td>K. R.</td><td>+91-73******40</td><td>NH**********05</td><td>***</td></tr><tr><td>A. Y.</td><td>+91-73******78</td><td>NH**********07</td><td>***</td></tr><tr><td>K. K.</td><td>+91-73******35</td><td>NH**********10</td><td>***</td></tr></table>\n<h2>2. Which export it most likely came from</h2>\n<p class=\"note\">The origin was pinned by a canary record found in the leaked file.</p>\n<table><tr><th>Export</th><th>Verdict</th><th>Overlap with leak</th><th>Format match</th><th>Watermark term</th><th>Fit</th><th>Why</th></tr><tr><td>art:E1</td><td>candidate</td><td>99.8%</td><td>100.0%</td><td>-0.91</td><td>1.06</td><td></td></tr><tr><td>art:E4</td><td>candidate</td><td>99.8%</td><td>100.0%</td><td>-8.00</td><td>-6.03</td><td></td></tr><tr><td>art:E5</td><td>candidate</td><td>99.8%</td><td>100.0%</td><td>-8.00</td><td>-6.03</td><td></td></tr><tr><td>art:E6</td><td>candidate</td><td>99.7%</td><td>100.0%</td><td>-8.00</td><td>-6.04</td><td></td></tr><tr><td>art:E2</td><td>excluded (watermark_before)</td><td>96.7%</td><td>n/a</td><td>n/a</td><td>n/a</td><td>Created before the newest leaked record existed.</td></tr><tr><td>art:E3</td><td>excluded (schema)</td><td>n/a</td><td>n/a</td><td>n/a</td><td>n/a</td><td>The export lacks columns that appear in the leaked file.</td></tr></table>\n<h2>3. Most likely custody paths</h2>\n<h3>Hypothesis 1: relative likelihood 87.9%</h3>\n<p>art:E1 (created by etl-nightly at 2026-10-09T02:10:00Z) is the likely source: 100% of the leaked records are in it. Ravi Menon downloaded it from Bi Warehouse to Ravi Menon laptop at 2026-10-09T21:40:00Z. A move from Ravi Menon laptop to Telegram Leak Channel by Ravi Menon is inferred because no log was found. Ravi Menon moved 47682 rows; their usual is about 251.</p>\n<ul><li><strong>Observed</strong>: Ravi Menon downloaded it from Bi Warehouse to Ravi Menon laptop at 2026-10-09T21:40:00Z.</li><li><strong>Inferred</strong>: A move from Ravi Menon laptop to Telegram Leak Channel by Ravi Menon is inferred because no log was found.</li><li><strong>Anomaly</strong>: Ravi Menon moved 47682 rows; their usual is about 251.</li><li><strong>Fingerprint</strong>: 100% of the leaked identifiers appear in art:E1; 9 of 9 format attributes match; watermark term -0.91.</li></ul>\n<h3>Hypothesis 2: relative likelihood 2.4%</h3>\n<p>art:E1 (created by etl-nightly at 2026-10-09T02:10:00Z) is the likely source: 100% of the leaked records are in it. A move from Bi Warehouse to Reyan Nivan laptop by Reyan Nivan is inferred because no log was found. A move from Reyan Nivan laptop to Telegram Leak Channel by Reyan Nivan is inferred because no log was found.</p>\n<ul><li><strong>Inferred</strong>: A move from Bi Warehouse to Reyan Nivan laptop by Reyan Nivan is inferred because no log was found.</li><li><strong>Inferred</strong>: A move from Reyan Nivan laptop to Telegram Leak Channel by Reyan Nivan is inferred because no log was found.</li><li><strong>Fingerprint</strong>: 100% of the leaked identifiers appear in art:E1; 9 of 9 format attributes match; watermark term -0.91.</li></ul>\n<h3>Hypothesis 3: relative likelihood 1.9%</h3>\n<p>art:E1 (created by etl-nightly at 2026-10-09T02:10:00Z) is the likely source: 100% of the leaked records are in it. A move from Bi Warehouse to Kairav Teral laptop by Kairav Teral is inferred because no log was found. A move from Kairav Teral laptop to Telegram Leak Channel by Kairav Teral is inferred because no log was found.</p>\n<ul><li><strong>Inferred</strong>: A move from Bi Warehouse to Kairav Teral laptop by Kairav Teral is inferred because no log was found.</li><li><strong>Inferred</strong>: A move from Kairav Teral laptop to Telegram Leak Channel by Kairav Teral is inferred because no log was found.</li><li><strong>Fingerprint</strong>: 100% of the leaked identifiers appear in art:E1; 9 of 9 format attributes match; watermark term -0.91.</li></ul>\n<h2>4. Who is most exposed on these paths</h2>\n<table><tr><th>Actor</th><th>Share of path likelihood</th></tr><tr><td>Ravi Menon</td><td>87.9%</td></tr><tr><td>Reyan Nivan</td><td>2.6%</td></tr><tr><td>Kairav Teral</td><td>1.9%</td></tr><tr><td>Meena Iyer</td><td>1.3%</td></tr><tr><td>Arohan Vey</td><td>1.2%</td></tr></table>\n<h2>5. Containment recommendations</h2>\n<table><tr><th>Action</th><th>Paths covered</th><th>Cumulative coverage</th></tr><tr><td>Block outbound uploads from Ravi Menon&#x27;s laptop</td><td>87.9%</td><td>87.9%</td></tr><tr><td>Revoke Reyan Nivan&#x27;s access to Bi Warehouse</td><td>2.6%</td><td>90.5%</td></tr><tr><td>Block outbound uploads from Kairav Teral&#x27;s laptop</td><td>1.9%</td><td>92.4%</td></tr></table>\n<h2>6. Evidence that would narrow this down</h2>\n<ul><li>Endpoint, proxy or DLP logs for Ravi Menon&#x27;s laptop between 2026-10-09T02:10:00Z and 2026-10-12T08:30:00Z (on 87.9% of path likelihood)</li><li>Endpoint, proxy or DLP logs for Reyan Nivan&#x27;s laptop between 2026-10-09T02:10:00Z and 2026-10-12T08:30:00Z (on 2.4% of path likelihood)</li><li>Bi Warehouse audit logs (src:bi-warehouse) between 2026-10-09T02:10:00Z and 2026-10-12T08:30:00Z (on 2.4% of path likelihood)</li></ul>\n<h2>7. Notes</h2><ul><li>Origin pinned by canary can:E1-1 planted in art:E1.</li></ul>\n<h2>Limits of this report</h2><ul><li>Figures are relative likelihoods between the hypotheses listed, not a probability that any person is responsible.</li><li>Loss of log events is estimated from sequence gaps; missing hops are inferences, not facts.</li><li>The output is a ranked set of hypotheses for a human investigator, never a finding of guilt.</li></ul>\n<p class=\"note\">Verify current legal timelines with counsel.</p>\n</body>\n</html>\n"
+ "report_html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Incident report trc:A1-42-L40-C</title>\n<style>\n  body { font-family: system-ui, sans-serif; max-width: 920px; margin: 2rem auto; padding: 0 1rem; color: #1b1f24; line-height: 1.5; }\n  h1 { font-size: 1.6rem; margin-bottom: .2rem; }\n  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #d0d7de; padding-bottom: .2rem; }\n  table { border-collapse: collapse; width: 100%; font-size: .9rem; }\n  th, td { border: 1px solid #d0d7de; padding: .35rem .5rem; text-align: left; vertical-align: top; }\n  th { background: #f6f8fa; }\n  .badge { display: inline-block; background: #fff3cd; border: 1px solid #e0c36a; padding: .1rem .5rem; border-radius: 4px; font-size: .8rem; font-weight: 600; }\n  .note { background: #f6f8fa; border-left: 4px solid #8c959f; padding: .5rem .8rem; margin: .8rem 0; }\n  .muted { color: #57606a; font-size: .9rem; }\n  li { margin: .2rem 0; }\n</style>\n</head>\n<body>\n<h1>PRATYAKSH incident report</h1>\n<p><span class=\"badge\">SIMULATED</span> <span class=\"muted\">All data in this report is synthetic. Trace trc:A1-42-L40-C for scenario scn:A1-42-L40-C.</span></p>\n<h2>1. What was found</h2>\n<table><tr><th>Item</th><th>Value</th></tr><tr><td>Company (simulated)</td><td>Nova Health</td></tr><tr><td>Found at</td><td>Telegram Leak Channel (ext:telegram-leak-channel)</td></tr><tr><td>Found (UTC)</td><td>2026-10-12T08:30:00Z</td></tr><tr><td>File</td><td>nova_customers_cg.csv</td></tr><tr><td>Rows</td><td>47014</td></tr><tr><td>Columns</td><td>full_name, phone, policy_no, created_at</td></tr><tr><td>Newest record in file (UTC)</td><td>2026-10-09T01:51:22Z</td></tr><tr><td>Systems / actors / events / exports</td><td>34 / 23 / 857 / 6</td></tr></table>\n<p class=\"muted\">Masked preview (first rows):</p>\n<table><tr><th>full_name</th><th>phone</th><th>policy_no</th><th>created_at</th></tr><tr><td>P. R.</td><td>+91-73******83</td><td>NH**********02</td><td>***</td></tr><tr><td>R. L.</td><td>+91-73******02</td><td>NH**********03</td><td>***</td></tr><tr><td>K. R.</td><td>+91-73******40</td><td>NH**********05</td><td>***</td></tr><tr><td>A. Y.</td><td>+91-73******78</td><td>NH**********07</td><td>***</td></tr><tr><td>K. K.</td><td>+91-73******35</td><td>NH**********10</td><td>***</td></tr></table>\n<h2>2. Which export it most likely came from</h2>\n<p class=\"note\">The origin was pinned by a canary record found in the leaked file.</p>\n<table><tr><th>Export</th><th>Verdict</th><th>Overlap with leak</th><th>Format match</th><th>Watermark term</th><th>Fit</th><th>Why</th></tr><tr><td>art:E1</td><td>candidate</td><td>99.8%</td><td>100.0%</td><td>-0.91</td><td>1.06</td><td></td></tr><tr><td>art:E4</td><td>candidate</td><td>99.8%</td><td>100.0%</td><td>-8.00</td><td>-6.03</td><td></td></tr><tr><td>art:E5</td><td>candidate</td><td>99.8%</td><td>100.0%</td><td>-8.00</td><td>-6.03</td><td></td></tr><tr><td>art:E6</td><td>candidate</td><td>99.7%</td><td>100.0%</td><td>-8.00</td><td>-6.04</td><td></td></tr><tr><td>art:E2</td><td>excluded (watermark_before)</td><td>96.7%</td><td>n/a</td><td>n/a</td><td>n/a</td><td>Created before the newest leaked record existed.</td></tr><tr><td>art:E3</td><td>excluded (schema)</td><td>n/a</td><td>n/a</td><td>n/a</td><td>n/a</td><td>The export lacks columns that appear in the leaked file.</td></tr></table>\n<h2>3. Most likely custody paths</h2>\n<h3>Hypothesis 1: relative likelihood 81.4%</h3>\n<p>art:E1 (created by etl-nightly at 2026-10-09T02:10:00Z) is the likely source: 100% of the leaked records are in it. Ravi Menon downloaded it from Bi Warehouse to Ravi Menon laptop at 2026-10-09T21:40:00Z. A move from Ravi Menon laptop to Telegram Leak Channel by Ravi Menon is inferred because no log was found. Ravi Menon moved 47682 rows; their usual is about 251.</p>\n<ul><li><strong>Observed</strong>: Ravi Menon downloaded it from Bi Warehouse to Ravi Menon laptop at 2026-10-09T21:40:00Z.</li><li><strong>Inferred</strong>: A move from Ravi Menon laptop to Telegram Leak Channel by Ravi Menon is inferred because no log was found.</li><li><strong>Anomaly</strong>: Ravi Menon moved 47682 rows; their usual is about 251.</li><li><strong>Fingerprint</strong>: 100% of the leaked identifiers appear in art:E1; 9 of 9 format attributes match; watermark term -0.91.</li></ul>\n<h3>Hypothesis 2: relative likelihood 7.4%</h3>\n<p>art:E1 (created by etl-nightly at 2026-10-09T02:10:00Z) is the likely source: 100% of the leaked records are in it. partner-api-key-7 pulled through the API it from Bi Warehouse to Unknown Host at 2026-10-09T10:30:00Z. A move from Unknown Host to Telegram Leak Channel by partner-api-key-7 is inferred because no log was found.</p>\n<ul><li><strong>Observed</strong>: partner-api-key-7 pulled through the API it from Bi Warehouse to Unknown Host at 2026-10-09T10:30:00Z.</li><li><strong>Inferred</strong>: A move from Unknown Host to Telegram Leak Channel by partner-api-key-7 is inferred because no log was found.</li><li><strong>Fingerprint</strong>: 100% of the leaked identifiers appear in art:E1; 9 of 9 format attributes match; watermark term -0.91.</li></ul>\n<h3>Hypothesis 3: relative likelihood 2.2%</h3>\n<p>art:E1 (created by etl-nightly at 2026-10-09T02:10:00Z) is the likely source: 100% of the leaked records are in it. A move from Bi Warehouse to Reyan Nivan laptop by Reyan Nivan is inferred because no log was found. A move from Reyan Nivan laptop to Telegram Leak Channel by Reyan Nivan is inferred because no log was found.</p>\n<ul><li><strong>Inferred</strong>: A move from Bi Warehouse to Reyan Nivan laptop by Reyan Nivan is inferred because no log was found.</li><li><strong>Inferred</strong>: A move from Reyan Nivan laptop to Telegram Leak Channel by Reyan Nivan is inferred because no log was found.</li><li><strong>Fingerprint</strong>: 100% of the leaked identifiers appear in art:E1; 9 of 9 format attributes match; watermark term -0.91.</li></ul>\n<h2>4. Who is most exposed on these paths</h2>\n<table><tr><th>Actor</th><th>Share of path likelihood</th></tr><tr><td>Ravi Menon</td><td>81.4%</td></tr><tr><td>partner-api-key-7</td><td>7.4%</td></tr><tr><td>Reyan Nivan</td><td>2.4%</td></tr><tr><td>Kairav Teral</td><td>1.8%</td></tr><tr><td>Meena Iyer</td><td>1.2%</td></tr></table>\n<h2>5. Containment recommendations</h2>\n<table><tr><th>Action</th><th>Paths covered</th><th>Cumulative coverage</th></tr><tr><td>Block outbound uploads from Ravi Menon&#x27;s laptop</td><td>81.4%</td><td>81.4%</td></tr><tr><td>Block transfers to Unknown Host</td><td>7.4%</td><td>88.8%</td></tr><tr><td>Revoke Reyan Nivan&#x27;s access to Bi Warehouse</td><td>2.4%</td><td>91.2%</td></tr></table>\n<h2>6. Evidence that would narrow this down</h2>\n<ul><li>Endpoint, proxy or DLP logs for Ravi Menon&#x27;s laptop between 2026-10-09T02:10:00Z and 2026-10-12T08:30:00Z (on 81.4% of path likelihood)</li><li>Network logs for transfers from Unknown Host (on 7.4% of path likelihood)</li><li>Endpoint, proxy or DLP logs for Reyan Nivan&#x27;s laptop between 2026-10-09T02:10:00Z and 2026-10-12T08:30:00Z (on 2.2% of path likelihood)</li></ul>\n<h2>7. Notes</h2><ul><li>Origin pinned by canary can:E1-1 planted in art:E1.</li></ul>\n<h2>Limits of this report</h2><ul><li>Figures are relative likelihoods between the hypotheses listed, not a probability that any person is responsible.</li><li>Loss of log events is estimated from sequence gaps; missing hops are inferences, not facts.</li><li>The output is a ranked set of hypotheses for a human investigator, never a finding of guilt.</li></ul>\n<p class=\"note\">Verify current legal timelines with counsel.</p>\n</body>\n</html>\n"
 }

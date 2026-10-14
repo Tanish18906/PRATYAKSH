@@ -55,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="h-14 shrink-0 border-b border-line bg-surface px-4 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
       <div className="flex items-center gap-2 min-w-0">
         <PawMark />
-        <span className="text-[15px] font-semibold text-ink">PUGMARK</span>
+        <span className="text-[15px] font-semibold text-ink">PRATYAKSH</span>
         {caseName && <span className="text-[13px] text-ink-3 truncate">{caseName}</span>}
       </div>
 

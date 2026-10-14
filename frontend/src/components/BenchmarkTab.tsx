@@ -7,7 +7,7 @@ import { BenchmarkResult } from '../types/contract';
 import { BENCHMARK_METHODS, BenchmarkView, getStats, transformBenchmarkData } from '../utils/benchmark';
 import { TOKENS } from '../utils/tokens';
 
-const BENCHMARK_TIP = 'Tests PUGMARK on generated scenarios with known synthetic ground truth.';
+const BENCHMARK_TIP = 'Tests PRATYAKSH on generated scenarios with known synthetic ground truth.';
 
 interface BenchmarkTabProps {
   benchmark: BenchmarkResult | null;
@@ -84,7 +84,7 @@ export const BenchmarkTab: React.FC<BenchmarkTabProps> = ({ benchmark, busy, off
     <div className="rounded-card border border-line bg-surface p-4">
       <h3 className="text-sm font-semibold text-ink">{title}</h3>
       <p className="mt-0.5 flex items-center gap-3 text-xs text-ink-3">
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-accent" />PUGMARK</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-accent" />PRATYAKSH</span>
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-ink-3" />Best baseline</span>
       </p>
       <div className="mt-2 h-60">
@@ -104,7 +104,7 @@ export const BenchmarkTab: React.FC<BenchmarkTabProps> = ({ benchmark, busy, off
               contentStyle={{ backgroundColor: TOKENS.surface, borderColor: TOKENS.line, color: TOKENS.ink, fontSize: '12px', borderRadius: 8 }}
               formatter={(value) => pct(value)}
             />
-            <Bar dataKey="pugmark" name="PUGMARK" fill={TOKENS.accent} radius={[3, 3, 0, 0]}>
+            <Bar dataKey="pugmark" name="PRATYAKSH" fill={TOKENS.accent} radius={[3, 3, 0, 0]}>
               <LabelList dataKey="pugmark" position="top" formatter={pct} fontSize={11} fill={TOKENS.ink2} />
             </Bar>
             <Bar dataKey="best" name="Best baseline" fill={TOKENS.ink3} radius={[3, 3, 0, 0]}>

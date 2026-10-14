@@ -59,10 +59,11 @@ test('report preview is sandboxed without script or same-origin privileges', () 
   assert.match(html, /sandbox=""/);
 });
 
-test('offline replay disables the Telegram export action', () => {
-  const html = renderToStaticMarkup(<TelegramChat discovery={bundle.scenario.discovery}
-    scenario_id={bundle.scenario.id} busy={false} offlineReplay onExportAndTrace={noop} />);
-  assert.match(html, /<button[^>]* disabled=""/);
+// Changed 2026-10-14 at the human's request: offline replay now starts empty and Export and trace replays the bundled trace
+test('offline replay keeps Export and trace available, and busy disables it', () => {
+  const props = { discovery: bundle.scenario.discovery, scenario_id: bundle.scenario.id, onExportAndTrace: noop };
+  assert.doesNotMatch(renderToStaticMarkup(<TelegramChat {...props} busy={false} offlineReplay />), /<button[^>]* disabled=""/);
+  assert.match(renderToStaticMarkup(<TelegramChat {...props} busy offlineReplay />), /<button[^>]* disabled=""/);
 });
 
 test('masked cells have keyboard-accessible reveal buttons, disabled during offline replay', () => {

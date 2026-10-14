@@ -41,7 +41,7 @@ def _vendor_boundary(summary: dict, hyps: list) -> bool:
 def build_report(summary: dict, trace: dict) -> str:
     name = {x["id"]: x["name"] for x in summary["actors"] + summary["locations"]}
     leak, hyps = summary["leak_sample"], trace["hypotheses"]
-    out = [f"<h1>PUGMARK incident report</h1>",
+    out = [f"<h1>PRATYAKSH incident report</h1>",
            f"<p><span class=\"badge\">SIMULATED</span> <span class=\"muted\">All data in this report is synthetic. "
            f"Trace {e(trace['trace_id'])} for scenario {e(summary['id'])}.</span></p>",
            "<h2>1. What was found</h2>",

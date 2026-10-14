@@ -215,7 +215,7 @@ export const ProvenanceGraph: React.FC<ProvenanceGraphProps> = ({
         ...edgeElements(graph, latest.current.hypotheses),
       ],
       style: cytoscapeStyles,
-      layout: { name: 'preset' },
+      layout: { name: 'preset', fit: false }, // the layout effect below sets positions and the viewport
       boxSelectionEnabled: false,
       autounselectify: true,
       minZoom: 0.5,

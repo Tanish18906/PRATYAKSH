@@ -121,6 +121,16 @@ h1, h2, h3 {
   animation: bar-fill 400ms var(--ease) both;
 }
 
+/* The current trace step's bar fills over the step's 2.5 s */
+@keyframes step-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.step-fill {
+  animation: step-fill 2500ms linear both;
+}
+
 @keyframes slide-in {
   from { transform: translateX(100%); }
   to { transform: none; }

@@ -73,9 +73,9 @@ export const TelegramChat: React.FC<TelegramChatProps> = ({
                   {isLeak && (
                     <button
                       type="button"
-                      disabled={busy || offlineReplay}
+                      disabled={busy}
                       onClick={() => onExportAndTrace(msg.id)}
-                      title={offlineReplay ? 'Offline replay: the bundled trace is already shown.' : undefined}
+                      title={offlineReplay ? 'Offline replay: traces the bundled demo case.' : undefined}
                       className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-ctl bg-accent px-4 text-sm font-semibold text-white transition-colors duration-150 hover:bg-accent-hover disabled:opacity-50"
                     >
                       <Icon name="search" />

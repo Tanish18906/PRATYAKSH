@@ -9,3 +9,9 @@ frontend/dist/
 
 # local scratch testing area (never committed)
 testing/
+
+# project docs and agent reports stay local
+docs/
+
+# browser automation scratch
+.playwright-mcp/

@@ -1,365 +1,273 @@
-# PRATYAKSH (PUGMARK)
-### *Content-First Data Leak Provenance & Forensic Custody Reconstruction*
+<div align="center">
+
+# PRATYAKSH
+
+### Trace a data leak back to its source, its route and the place to cut it
+
+*Sanskrit: "directly evident". Built for INNOVATHON 2026, Problem Statement #18: Tracing a Data Leak Across Systems.*
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi)](https://fastapi.tiangolo.com)
-[![React 18](https://img.shields.io/badge/React-18.x-61DAFB.svg?logo=react)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg?logo=typescript)](https://www.typescriptlang.org)
-[![TailwindCSS](https://img.shields.io/badge/Tailwind-3.x-38B2AC.svg?logo=tailwind-css)](https://tailwindcss.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![INNOVATHON 2026](https://img.shields.io/badge/INNOVATHON-2026%20Cybersecurity-red.svg)](#)
+[![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688.svg?logo=fastapi)](https://fastapi.tiangolo.com)
+[![React 18](https://img.shields.io/badge/React-18-61DAFB.svg?logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6.svg?logo=typescript)](https://www.typescriptlang.org)
+[![Tailwind](https://img.shields.io/badge/Tailwind-3-38B2AC.svg?logo=tailwind-css)](https://tailwindcss.com)
+[![Tests](https://img.shields.io/badge/tests-262%20backend%20%C2%B7%2019%20frontend-brightgreen.svg)](#run-the-tests)
+[![Offline](https://img.shields.io/badge/runs-fully%20offline-informational.svg)](#offline-replay)
+
+<img src="assets/screenshots/03-investigation.png" alt="PRATYAKSH investigation screen: answer banner, provenance graph and ranked routes" width="100%">
+
+</div>
 
 ---
 
-## 📌 Executive Summary
+## The problem in one paragraph
 
-When sensitive company records surface in unexpected locations—such as a dark web forum, a file-sharing dump, or a Telegram channel—forensic investigators face a critical bottleneck: **event logs are noisy, fragmented, and incomplete**. Traditional Security Information and Event Management (SIEM) solutions query existing logs, but fail when an insider bypasses endpoint monitoring, when attackers suppress auditing, or when intermediate tools launder the data format.
+A company's customer file shows up on a Telegram channel. Several systems, people and transfers could have moved it, and the logs are incomplete: some events were never recorded. Investigators need to narrow down **where the file came from**, **who most likely moved it**, and **what to do next**, without exposing more personal data along the way.
 
-**PRATYAKSH** (*Sanskrit: directly evident, verifiable proof* / developed under codename **PUGMARK**) addresses **Problem Statement #18 (Cybersecurity: Tracing a Data Leak Across Systems)** for **INNOVATHON 2026**.
+## What PRATYAKSH answers
 
-Instead of merely searching logs, PRATYAKSH starts from the **leaked content itself**. Using **zero-raw-data privacy-preserving MinHash sketches**, temporal watermarks, and format fingerprints, PRATYAKSH matches the leaked records back to known export artifacts. It then traverses the provenance graph using an **explicit, penalized missing-hop inference model**, ranking candidate custody paths, evaluating actor behavioral anomalies, and computing actionable containment chokepoints.
+| | Question | How PRATYAKSH answers it |
+|:-:|---|---|
+| **1** | **Source:** which company export is this file? | Matches the leaked file's *fingerprint* (keyed hashes of its identifiers, its format, its newest record) against every export. It never reads the raw data. |
+| **2** | **Route:** who moved it, through which systems? | Searches the custody graph. Steps that are in the logs are drawn solid; steps with no log are *inferred*, drawn dashed and labelled. Routes are ranked by **relative likelihood**. |
+| **3** | **Action:** where do we cut, and what do we collect next? | Picks the cut point that stops the most likely routes, and the one missing log that would settle the biggest open question. |
 
+> All data in this project is **simulated**: a fictional company (Nova Health), fictional people and a mock Telegram channel. Rankings are relative likelihoods for a human investigator, not a finding of responsibility.
+
+---
+
+## The demo in four steps
+
+| 1. Discover | 2. Match | 3. Trace | 4. Act |
+|:-:|:-:|:-:|:-:|
+| <img src="assets/screenshots/01-start.png" width="220"> | <img src="assets/screenshots/02-tracing.png" width="220"> | <img src="assets/screenshots/03-investigation.png" width="220"> | <img src="assets/screenshots/05-origin-match.png" width="220"> |
+| A post on a (simulated) Telegram channel carries `nova_customers_cg.csv`. Press **Export and trace**. | The file is exported, fingerprinted and matched; custody routes are searched and ranked. Each step is shown as it runs. | The answer banner reads the result in one line; the graph draws the route, solid where logged, dashed where inferred. | The source table shows the winning export and why every decoy was excluded, in plain words. |
+
+**What the seed-42 case shows** (archetype A1, 40% log loss):
+
+- **Source:** *Export E1*, made by the nightly ETL job on 9 Oct, 02:10 UTC. 100% of the leaked identifiers are in it, and planted canary records confirm it.
+- **Decoys handled:** E2 is excluded because it is older than the newest record in the leak; E3 is excluded because its columns differ; E4 to E6 match the records but fit worse on timing.
+- **Route #1, 81% relative likelihood:** Ravi Menon downloaded 47,682 rows from the BI warehouse to his laptop on 9 Oct at 21:40 UTC (his usual is about 251). The move from his laptop to the Telegram channel has **no log**, so it is inferred and labelled that way.
+- **Where to cut:** block outbound uploads from Ravi Menon's laptop. This alone stops 81% of the likely routes.
+- **What to collect next:** endpoint, proxy or DLP logs for Ravi Menon's laptop between 9 Oct, 02:10 and 12 Oct, 08:30 UTC.
+
+---
+
+## A closer look
+
+<table>
+<tr>
+<td width="50%"><img src="assets/screenshots/04-second-route.png" alt="Second route selected"><br><b>Compare routes.</b> Pick route #2 from the tabs, the list or the graph; all three stay in sync and the graph re-lays out with that route on one line.</td>
+<td width="50%"><img src="assets/screenshots/07-audited-reveal.png" alt="Audited reveal dialog"><br><b>Masked by default.</b> Every personal value is masked. Revealing one needs a written reason of at least 8 characters, and the reveal is written to an append-only audit log.</td>
+</tr>
+<tr>
+<td width="50%"><img src="assets/screenshots/06-report.png" alt="Incident report"><br><b>Incident report.</b> A ready-to-share report of the case, with download and copy-summary actions.</td>
+<td width="50%"><img src="assets/screenshots/08-scenario-drawer.png" alt="Scenario drawer"><br><b>Judge picks the culprit.</b> The Scenario drawer generates new cases, sets log loss, and injects a leak through any person the judge chooses. It traces again live.</td>
+</tr>
+</table>
+
+---
+
+## How it works
+
+```mermaid
+flowchart LR
+    A["Leaked file<br/>(mock Telegram)"] --> B["Fingerprint<br/>keyed MinHash sketches,<br/>format profile, newest record"]
+    B --> C{"Match against<br/>every export"}
+    C -->|"wrong columns,<br/>too old, too new"| X["Excluded,<br/>with a reason"]
+    C -->|"best fit"| D["Source export"]
+    D --> E["Custody search<br/>observed steps +<br/>penalised hidden steps"]
+    E --> F["Rank routes<br/>relative likelihood,<br/>actor anomaly"]
+    F --> G["Where to cut<br/>(greedy chokepoints)"]
+    F --> H["What to collect next<br/>(most informative missing log)"]
 ```
-       +-----------------------------------------------------------+
-       |   Leaked Sample Discovered (e.g. Mock Telegram Channel)   |
-       +-----------------------------+-----------------------------+
-                                     |
-                                     v
-       +-----------------------------------------------------------+
-       |        Privacy-Preserving Fingerprinting & Sketching      |
-       |  - HMAC-SHA256 Bottom-k MinHash Sketches (Normalized IDs) |
-       |  - Format Profile (Date/Phone style, quoting, delimiters) |
-       |  - Record Watermarking (Newest creation timestamp)        |
-       +-----------------------------+-----------------------------+
-                                     |
-                                     v
-       +-----------------------------------------------------------+
-       |                 Candidate Origin Ranking                  |
-       |  - Hard Constraints (Schema completeness, Watermark gap)  |
-       |  - Soft Scoring: Jaccard Containment, Specificity, Style  |
-       +-----------------------------+-----------------------------+
-                                     |
-                                     v
-       +-----------------------------------------------------------+
-       |             Custody Path Search & Inference               |
-       |  - Observed Movement Edges (Download, Copy, Send, API)    |
-       |  - Penalized Hidden/Missing Hops (Unlogged endpoints)     |
-       |  - Empirical Loss Estimation from Sequence-Number Gaps    |
-       +-----------------------------+-----------------------------+
-                                     |
-                                     v
-       +-----------------------------------------------------------+
-       |        Actor Anomaly Scoring & Hypothesis Ranking         |
-       |  - 30-Day Log-Normal Volume Baselines (Z-score)           |
-       |  - Off-Hours, First-Time Action & Privilege Shifts        |
-       |  - Softmax Relative Likelihood over Plausible Paths       |
-       +-----------------------------+-----------------------------+
-                                     |
-                                     v
-       +-----------------------------------------------------------+
-       |           Actionable Containment & Forensics              |
-       |  - Greedy Chokepoint Recommendations (Max Path Mass)      |
-       |  - Information-Theoretic Missing Evidence Requests        |
-       |  - Masked Previews, Audited Justified Reveals & Reports   |
-       +-----------------------------------------------------------+
-```
 
----
+| Stage | What happens |
+|---|---|
+| **Fingerprint** | Identifier columns are normalised and hashed with HMAC-SHA256 under a per-case key; the 512 smallest hashes form a sketch. Raw records never reach the engine. |
+| **Origin match** | Hard rules drop exports with missing columns or impossible timing. The rest are scored on containment, specificity, format similarity and a freshness watermark. |
+| **Custody search** | Logged moves cost little. A move with no log costs more, and that cost depends on how lossy the relevant log source is, measured from gaps in its sequence numbers. |
+| **Ranking** | Route scores combine origin fit, path cost and how unusual each actor's behaviour was, then become relative likelihoods with a softmax. |
+| **Act** | Greedy chokepoints cover the most likelihood per action; the evidence request targets the hidden step whose answer would change the ranking most. |
 
-## 🎯 The Core Problem & The PRATYAKSH Advantage
+<details>
+<summary><b>The maths, in detail</b></summary>
 
-> *"Sensitive information appears in an unexpected location, but several services, users, and data transfers may be involved. Investigators need to narrow down possible causes from incomplete event records without exposing more data."* — **Problem Statement #18**
-
-| Problem Requirement | Traditional SIEM / Log Analysis | PRATYAKSH Approach |
-|---|---|---|
-| **Starting Point** | Keyword searches on existing event logs. Fails if egress wasn't logged. | **Content-First**: Fingerprints the leaked file and pinpoints exact originating export. |
-| **Incomplete Logs** | "No log, no event." The investigation hits a dead end. | **Inferred Custody Paths**: Graph search introduces explicit, penalized hidden hops. |
-| **Privacy Preservation** | Centralized log ingestion often duplicates and exposes raw PII. | **Zero-Raw-Data Sketches**: Compares keyed 64-bit HMAC sketches; raw records never cross boundaries. |
-| **Data Masking** | Static masking or unrestricted analyst access. | **Masked by Default + Audited Reveal**: Mandatory cryptographic masking; reveals require logged justification. |
-| **Containment Guidance** | Generic advice ("reset passwords"). | **Greedy Chokepoints**: Calculates exact permission/channel closure covering maximum path likelihood. |
-| **Forensic Uncertainty** | Binary assumptions or fabricated confidence. | **Relative Likelihood & Evidence Entropy**: Recommends which log source would maximize information gain. |
-
----
-
-## 🔬 Mathematical & Algorithmic Foundations
-
-### 1. Keyed Bottom-$k$ MinHash Containment
-Raw records are never ingested by the tracing engine. Each candidate dataset export $E$ and the leaked file $L$ compute a bottom-$k$ sketch ($k = 512$) on normalized identifier columns (`customer_id`, `email`, `phone`, `policy_no`):
+#### 1. Keyed bottom-k MinHash containment
+Each export $E$ and the leaked file $L$ get a bottom-$k$ sketch ($k = 512$) of their normalised identifier columns:
 
 $$\text{hash}(x) = \text{HMAC-SHA256}(K_{\text{case}}, \text{normalize}(x))[:8]$$
 
-The Jaccard similarity $J$ between the smallest $k$ hash values of $L$ and $E$ estimates the true set containment $C$:
+The Jaccard estimate $J$ from the sketches gives the containment of the leak in the export:
 
 $$C(L \subseteq E) = \frac{J \cdot (|L| + |E|)}{(1 + J) \cdot |L|}$$
 
-### 2. Candidate Origin Scoring
-Surviving candidate exports that pass hard constraints (containing all leaked columns and created on or before leak discovery) are scored via:
+#### 2. Origin fit
 
 $$\text{origin\_fit}(E) = 5.0 \cdot \ln(\max(C, 0.001)) + 1.0 \cdot \ln\left(\text{clip}\left(\frac{|L|}{|E|}, 0.01, 1\right)\right) + 2.0 \cdot \text{format\_sim}(L, E) + \text{WM}(E)$$
 
-* **Specificity ($\frac{|L|}{|E|}$)**: Penalizes sprawling, massive database dumps when a targeted subset export explains the leak.
-* **Format Similarity**: Compares delimiters, quoting rules, header casings, null tokens, and phone/date formatting dialect to detect intermediate tool manipulation.
-* **Watermark Penalty ($\text{WM}$)**: If the leak represents $\ge 90\%$ of an export, but the export was created hours after the newest record timestamp in the leak, it is penalized for missing fresh records:
-  $$\text{WM}(E) = -\text{arrivals\_per\_hour} \times \Delta t_{\text{gap}}$$
+The watermark term penalises an export made long after the newest record in the leak, because it should then contain fresher records that the leak lacks:
 
-### 3. Custody Graph Traversal with Penalized Hidden Hops
-Custody graphs model data transitions across systems (`sys:`), employee endpoints (`ep:`), and external locations (`ext:`). To bridge missing log intervals:
+$$\text{WM}(E) = -\text{arrivals\_per\_hour} \times \Delta t_{\text{gap}}$$
 
-$$\text{path\_cost} = \sum_{\text{hop} \in \text{path}} c(\text{hop})$$
+#### 3. Custody paths with penalised hidden hops
 
-$$c(\text{hop}) = \begin{cases} 
-0.10 & \text{if observed in telemetry} \\
-0.50 & \text{if hidden from an unmonitored employee endpoint} \\
--\ln(p_{\text{loss\_source}}) + 1.0 & \text{if hidden from an enterprise logged source}
-\end{cases}$$
+$$c(\text{hop}) = \begin{cases} 0.10 & \text{observed in the logs} \\ 0.50 & \text{hidden, from an unmonitored laptop} \\ -\ln(p_{\text{loss}}) + 1.0 & \text{hidden, where a log source should have seen it} \end{cases}$$
 
-Empirical source loss rate $p_{\text{loss\_source}}$ is computed in real time from sequence number gaps ($\text{seq}$ assigned prior to log drops).
+$p_{\text{loss}}$ for each log source is estimated from gaps in its sequence numbers.
 
-### 4. Actor Anomaly & Relative Likelihood
-Actor activity is evaluated against a 30-day log-normal behavioral baseline:
+#### 4. Actor anomaly and relative likelihood
 
-$$z = \frac{\ln(1 + \text{rows}) - \mu_{\text{actor}}}{\sigma_{\text{actor}}}$$
-$$\text{anomaly} = \min(z, 4.0) + 0.5 \cdot \mathbf{1}_{\text{off\_hours}} + 0.7 \cdot \mathbf{1}_{\text{first\_time}} + 0.7 \cdot \mathbf{1}_{\text{recent\_privilege\_shift}}$$
+$$z = \frac{\ln(1 + \text{rows}) - \mu_{\text{actor}}}{\sigma_{\text{actor}}}, \qquad \text{anomaly} = \min(z, 4) + 0.5\,\mathbf{1}_{\text{off hours}} + 0.7\,\mathbf{1}_{\text{first time}} + 0.7\,\mathbf{1}_{\text{new privilege}}$$
 
-Hypotheses are ranked using relative likelihood with temperature scaling ($T = 1.0$):
+$$S(\text{path}) = \text{origin\_fit} - \text{path\_cost} + 0.6 \sum_{a} \text{anomaly}(a), \qquad P(\text{path}) = \frac{e^{S(\text{path})}}{\sum_{p'} e^{S(p')}}$$
 
-$$S(\text{path}) = 1.0 \cdot \text{origin\_fit} - 1.0 \cdot \text{path\_cost} + 0.6 \sum_{a \in \text{actors}} \text{anomaly}(a)$$
-$$P(\text{path}) = \frac{e^{S(\text{path}) / T}}{\sum_{p'} e^{S(p') / T}}$$
+$P$ is a **relative likelihood** across the candidate routes, not a calibrated probability.
+
+</details>
 
 ---
 
-## 🏛 System Architecture
+## Results on the simulator
 
-```
-                          ┌───────────────────────────────────────────────┐
-                          │               REACT FRONTEND                  │
-                          │   Cytoscape Graph • Recharts • Dark Theme     │
-                          └───────────────▲───────────────────────────────┘
-                                          │ HTTP / JSON
-                                          ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        FASTAPI BACKEND & PRIVACY LAYER                  │
-│                                                                         │
-│   • /api/scenario/generate   • /api/trace          • /api/reveal        │
-│   • /api/leak/export         • /api/canary/alert   • /api/benchmark     │
-│                                                                         │
-│   ┌───────────────────────────┐      ┌──────────────────────────────┐   │
-│   │   PRIVACY & AUDIT LAYER   │      │       INCIDENT REPORTING     │   │
-│   │  - Cryptographic Masking  │      │  - DPDP Compliance Brief     │   │
-│   │  - Audited Reveal Engine  │      │  - HTML Incident Dossier     │   │
-│   └─────────────▲─────────────┘      └──────────────────────────────┘   │
-└─────────────────┼───────────────────────────────────────────────────────┘
-                  │
-      ┌───────────┴───────────────────────────────┐
-      │                                           │
-      ▼ (Public Scenario Only)                    ▼ (Isolated Benchmark/Test)
-┌───────────────────────────┐       ┌─────────────────────────────────────┐
-│       TRACING ENGINE      │       │          SYNTHETIC SIMULATOR        │
-│                           │       │                                     │
-│  - Canary Pinning         │       │  - Nova Health 30-Day Activity      │
-│  - Sketch Containment     │       │  - Archetypes (A1 to A5)            │
-│  - Missing-Hop Search     │       │  - Configurable Log-Loss (0 to 60%) │
-│  - Behavioral Anomaly     │       │  - Mock Telegram Discovery Channel  │
-│  - Greedy Chokepoints     │       │  - Ground Truth Separation          │
-│  - Evidence Entropy       │       │                                     │
-└───────────────────────────┘       └─────────────────────────────────────┘
-```
+<img src="assets/screenshots/09-benchmark.png" alt="Benchmark tab" width="100%">
+
+150 simulated incidents per log-loss level (seeds 50 to 199; weights were tuned on seeds 0 to 49 only). "Best baseline" is the stronger of the simple baselines at each level.
+
+**Finding the source export**
+
+| Log loss | PRATYAKSH ranked 1st | Best baseline ranked 1st | PRATYAKSH in top 3 | Best baseline in top 3 |
+|:-:|:-:|:-:|:-:|:-:|
+| 0% | **100%** | 0% | **100%** | 83% |
+| 20% | **100%** | 0% | **100%** | 83% |
+| 40% | **95%** | 0% | **100%** | 83% |
+| 60% | **92%** | 0% | **100%** | 83% |
+
+**Finding the person who moved it**
+
+| Log loss | PRATYAKSH ranked 1st | Best baseline ranked 1st | PRATYAKSH in top 3 | Best baseline in top 3 |
+|:-:|:-:|:-:|:-:|:-:|
+| 0% | **100%** | 3% | **100%** | 44% |
+| 20% | **56%** | 3% | **61%** | 45% |
+| 40% | **49%** | 4% | **57%** | 44% |
+| 60% | **43%** | 9% | **51%** | 37% |
+
+Baselines: *largest export* and *most recent export* for the source; *last accessor* and *biggest exporter* for the person.
+
+> These numbers measure the engine on our own simulator, not real-world accuracy. Finding the person gets much harder as logs go missing, and the tables say so.
 
 ---
 
-## 📂 Repository Structure
+## Quick start
 
-```
-PRATYAKSH/
-├── README.md                           # Master project documentation
-├── docs/                               # Engineering specifications & data contracts
-│   ├── 00_PROJECT_CONTEXT.md           # Problem breakdown, story (seed 42), principles
-│   ├── 01_DATA_CONTRACT.md             # Frozen TypeScript/Pydantic schemas & constants
-│   ├── 02_SIMULATOR.md                 # Simulator spec, archetypes, loss & discovery
-│   ├── 03_ENGINE.md                    # Algorithmic engine spec, stages, formulas
-│   ├── 04_TEST_PLAN.md                 # Hand-crafted scenarios (H1-H8), test suites
-│   ├── 05_PHASES.md                    # Phased execution plan & quality gates
-│   ├── 06_WORK_SPLIT.md                # Roles, ownership, load-shedding hierarchy
-│   ├── FEATURES.md                     # Locked feature catalog & demo steps
-│   ├── FRONTEND.md                     # UI component hierarchy & interaction states
-│   ├── UI_UX_DESIGN.md                 # Investigative design tokens & layout guidelines
-│   └── MASTER_PROMPT.MD                # Autonomous agent orchestration instructions
-├── backend/                            # Python 3.11+ Backend Services
-│   ├── app/
-│   │   ├── main.py                     # FastAPI entry point & API routes
-│   │   ├── config.py                   # Centralized hyperparameter weights & tolerances
-│   │   ├── models.py                   # Pydantic v2 mirrors of 01_DATA_CONTRACT.md
-│   │   ├── common/
-│   │   │   └── sketch.py               # Shared HMAC bottom-k MinHash & Jaccard logic
-│   │   ├── sim/                        # Synthetic company generator & loss modeling
-│   │   ├── engine/                     # Provenance graph, anomaly, ranking & chokepoints
-│   │   ├── privacy/                    # Masking filters & immutable audit logger
-│   │   ├── report/                     # Automated incident report generator
-│   │   └── bench/                      # Benchmark harness against naive baselines
-│   ├── tests/                          # Automated Pytest suite (H1 to H8 scenarios)
-│   └── scripts/
-│       ├── validate.py                 # Contract validation tool
-│       └── make_demo_bundle.py         # Offline replay bundle generator (demo.json)
-└── frontend/                           # React + Vite + Tailwind Forensic Console
-    ├── src/
-    │   ├── components/                 # Graph (Cytoscape), Incident, Hypotheses, Tabs
-    │   ├── types/contract.ts           # TypeScript interfaces mirrored from data contract
-    │   └── App.tsx                     # Main forensic single-page dashboard
-    └── public/
-        └── demo.json                   # Standalone offline replay bundle for live demos
-```
-
----
-
-## ⚡ Quickstart Guide
-
-### Prerequisites
-* **Python**: 3.11 or newer
-* **Node.js**: v20.x or newer
-* **npm**: v10.x or newer
-
----
-
-### 1. Backend Setup
+**Needs:** Python 3.11+, Node.js 20+.
 
 ```bash
-# Clone the repository
 git clone https://github.com/Tanish18906/PRATYAKSH.git
 cd PRATYAKSH
+```
 
-# Create and activate a Python virtual environment
+<table>
+<tr><th>1. Backend (terminal 1)</th><th>2. Frontend (terminal 2)</th></tr>
+<tr><td>
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install backend dependencies
 cd backend
 pip install -r requirements.txt
-
-# Run test suite to verify math and contract integrity
-pytest -q
-
-# Start the FastAPI backend server (port 8000), one worker
 uvicorn app.main:app --port 8000
 ```
 
-> **Run exactly one uvicorn worker (the default). Do not pass `--workers`.** Loaded scenarios, audit numbering and
-> benchmark state live in the memory of one process, and audit ids are made unique with an in-process lock.
+</td><td>
 
-Smoke test (server running in another terminal; each line was run as written):
-```bash
-curl -s http://127.0.0.1:8000/api/health
-# {"status":"ok","contract_version":"1.0","engine_version":"1.0.0"}
-
-curl -s -X POST http://127.0.0.1:8000/api/scenario/generate -H 'content-type: application/json' -d '{"archetype":"A1","seed":42,"log_loss":0.4,"canary_mode":false,"scale":"demo"}'
-# a ScenarioSummary whose "id" is "scn:A1-42-L40"
-
-curl -s -X POST http://127.0.0.1:8000/api/trace -H 'content-type: application/json' -d '{"scenario_id":"scn:A1-42-L40"}'
-# a TraceResult: origin art:E1, top hypothesis act:ravi-menon, last hop inferred
-
-python backend/scripts/smoke.py     # does the three calls above and prints PASS or FAIL (run from the repo root)
-```
-All data is SIMULATED. Every generate, export, trace, reveal, report and benchmark appends one line to `backend/data/audit.jsonl`.
-When no simulator is available the API loads the hand-written scenarios `scn:H1` to `scn:H8` instead and `generate` answers 409.
-
----
-
-### 2. Frontend Setup
-
-In a separate terminal:
 ```bash
 cd frontend
-
-# Install Node dependencies
 npm install
-
-# Start the local development server
 npm run dev
 ```
 
-Open your browser at `http://localhost:5173`.
+Open **http://localhost:5173**
 
----
+</td></tr>
+</table>
 
-### 3. 100% Offline Replay Mode
-PRATYAKSH is engineered to function completely offline without internet connectivity. If the backend is not running, the frontend automatically falls back to `public/demo.json` (precomputed Seed 42 forensic trace) and displays an **OFFLINE REPLAY** indicator.
+> Run a single uvicorn worker (the default). Scenarios, audit numbering and benchmark state live in one process.
 
-To regenerate the offline bundle (seed 42, A1, demo scale, loss 0.4, canary mode on; needs the simulator):
+**Smoke test** with the backend running:
+
+```bash
+curl -s http://127.0.0.1:8000/api/health
+# {"status":"ok","contract_version":"1.0","engine_version":"1.0.0"}
+python backend/scripts/smoke.py      # generate, export and trace; prints PASS or FAIL
+```
+
+### Offline replay
+
+No backend? No network? The frontend falls back to `frontend/public/demo.json`, the seed-42 case precomputed by the same engine, and shows an **Offline replay** chip. The page still opens at the empty state, and Export and trace replays the bundled case. To rebuild the bundle:
+
 ```bash
 python backend/scripts/make_demo_bundle.py
-# until the simulator is available, a placeholder from a hand-written scenario:
-python backend/scripts/make_demo_bundle.py --fixture H1
+```
+
+### Run the tests
+
+```bash
+cd backend && pytest -q                 # 262 tests: engine, simulator, API, hand-built cases H1 to H8
+cd frontend && npm run build && npm run lint
 ```
 
 ---
 
-## 🎭 The Demo Walkthrough (Seed 42 / Archetype A1)
+## Built-in guardrails
 
-PRATYAKSH ships with a baseline ground-truth demonstration scenario (**Seed 42, Nova Health**):
+| | |
+|---|---|
+| **Hashes, not data** | The engine compares keyed sketches and schema metadata, never raw rows. |
+| **Masked by default** | Personal values are masked everywhere; a reveal needs a reason and is audited. |
+| **Append-only audit** | Every generate, export, trace, reveal, report and benchmark writes one line to `backend/data/audit.jsonl`. |
+| **Honest uncertainty** | Inferred steps are always dashed and labelled "no log found". Likelihoods are relative, never "confidence". |
+| **Ground truth stays hidden** | The simulator keeps the true answer to itself; the engine only sees what an investigator would see. |
+| **Deterministic** | Same seed, same scenario; same scenario, same trace. |
+
+**Limits:** everything is simulated; there is no real Telegram monitoring. Leaks through channels with no digital trace (a photo of a screen) cannot be traced.
+
+---
+
+## Repository layout
 
 ```
-+---------------------------------------------------------------------------------------+
-| 2026-10-09 02:10 UTC : etl-nightly generates Export E1 (48,900 rows, ISO format)      |
-| 2026-10-09 21:40 UTC : Analyst Ravi Menon downloads E1 to laptop (normal: 300 rows)   |
-| 2026-10-10 02:10 UTC : etl-nightly generates Decoy E4 (same filter, 400 newer rows)  |
-| 2026-10-10 22:00 UTC : [LOG DROPPED] Ravi uploads CSV to Telegram channel             |
-| 2026-10-12 08:30 UTC : Leak found on mock Telegram channel (48,212 rows)              |
-+---------------------------------------------------------------------------------------+
+PRATYAKSH/
+├── backend/
+│   ├── app/
+│   │   ├── main.py          FastAPI routes
+│   │   ├── config.py        every tunable weight, in one place
+│   │   ├── models.py        Pydantic mirror of the data contract
+│   │   ├── common/          shared HMAC MinHash sketching
+│   │   ├── sim/             synthetic company, logs, loss and the mock Telegram leak
+│   │   ├── engine/          origin match, custody search, anomaly, ranking, chokepoints
+│   │   ├── privacy/         masking and the audit log
+│   │   ├── report/          incident report
+│   │   └── bench/           benchmark against simple baselines
+│   ├── tests/               pytest suite
+│   └── scripts/             smoke test, contract validator, demo bundle builder
+├── frontend/
+│   ├── src/
+│   │   ├── components/      answer banner, provenance graph, routes, tabs, dialogs
+│   │   ├── state/           app state and the investigation flow
+│   │   └── utils/           layout, names, design tokens
+│   ├── tests/               node:test suites
+│   └── public/demo.json     offline replay bundle
+└── assets/screenshots/      images used in this README
 ```
 
-### Forensic Steps in the Dashboard:
-1. **Discovery (Simulated Telegram)**: Open the simulated Telegram tab, locate the leaked CSV attachment `nova_customers_cg.csv`, and click **Export & Trace**.
-2. **Fingerprint & Origin Match**:
-   * **E1 (Nightly Export)** ranks as Top Origin ($\approx 95\%$ containment, exact format match).
-   * **E2 (Contractor Arjun's Dump)** is excluded by the **watermark rule** (created before the newest record in the leak existed).
-   * **E4 (Decoy Next-Night Export)** is downranked due to the **watermark gap penalty** (the leak lacks E4's 400 new arrivals).
-3. **Provenance Graph Navigation**:
-   * Solid edges indicate observed database and warehouse downloads.
-   * A **dashed amber animated edge** illustrates the inferred missing hop from Ravi Menon's laptop to Telegram (`est. loss 40%`).
-4. **Behavioral Anomaly & Ranking**:
-   * Ravi Menon's download shows an anomaly score of $z > 3.8$ (downloaded 48,900 rows vs. standard 300-row baseline) combined with off-hours activity (21:40 UTC).
-5. **Actionable Containment (Chokepoint)**:
-   * Recommends revoking Ravi Menon's bulk export entitlement on `sys:bi-warehouse`, neutralizing over $78\%$ of plausible leak paths.
-6. **Information-Theoretic Evidence Suggestion**:
-   * Pinpoints that requesting **proxy/endpoint egress logs for Ravi's laptop between Oct 9–10** resolves the greatest entropy gap.
-7. **Privacy-Preserving Reveal**:
-   * Inspect masked records (`r***@example.com`, `+91-98******21`). Click **Reveal Value**, input justification (*"Verify high-risk VIP breach notice"*), and confirm audit trail logging.
+**Stack:** FastAPI and Pydantic v2 on the backend; React, Vite, TypeScript, Tailwind, Cytoscape.js and Recharts on the frontend. System fonts and inline icons only, so the UI works with no network.
 
 ---
 
-## 📊 Benchmark & Empirical Evaluation
+## Team
 
-PRATYAKSH evaluates performance against three traditional industry baselines across varying degrees of simulated log-loss ($0\%$, $20\%$, $40\%$, $60\%$):
+- **Tanish Mishra** ([@Tanish18906](https://github.com/Tanish18906)): tracing engine, privacy layer, API, maths foundations.
+- **Anmol**: synthetic data simulator, mock discovery UI, benchmark evaluation.
 
-* **B1 (Last Accessor)**: Attributed to the entity with the most recent read timestamp on candidate tables.
-* **B2 (Biggest Exporter)**: Attributed to the user or service account with the highest gross export volume.
-* **B3 & B4**: Baseline origin models using largest or most recent export timestamps.
-
-> **Status: no benchmark has been run yet.** No accuracy figure is claimed here. When the benchmark runner exists,
-> results will be produced on seeds 50 to 199 (tuning uses seeds 0 to 49 only) and reported as measured on
-> **synthetic data from our own simulator**, not as real-world accuracy.
-
----
-
-## 🛡 Security & Privacy Guardrails
-
-* **Hash-Only Matching**: The engine compares keyed sketches and schema metadata, never raw rows.
-* **Cryptographic Salting**: HMAC keys are randomized per case scenario, neutralizing rainbow table attacks on lower-entropy identifiers (e.g. phone numbers).
-* **Immutability & Accountability**: All data unmasking, report downloads, and trace executions write structured events to `backend/data/audit.jsonl`.
-* **Honest Limitations**:
-  * Output represents **relative likelihood**, never definitive judicial verdict.
-  * Real-world web scraping/crawler evasion is out of scope; detection is synthetic.
-  * Data leakage via non-digital avenues (physical screens, photos) cannot be tracked.
-
----
-
-## 👥 Authors & Acknowledgments
-
-* **Tanish Mishra** ([@Tanish18906](https://github.com/Tanish18906)) — Tracing Engine, Privacy Layer, API & Math Foundations.
-* **Anmol** — Synthetic Data Simulator, Mock Discovery UI & Benchmark Evaluation.
-
-*Developed with pride for **INNOVATHON 2026** (Problem Statement #18: Tracing a Data Leak Across Systems).*
-
----
-
-## 📄 License
-This project is licensed under the [MIT License](LICENSE).
+<div align="center"><sub>Built for INNOVATHON 2026 · Problem Statement #18 · All data simulated</sub></div>
