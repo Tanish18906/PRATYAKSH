@@ -6,3 +6,6 @@ backend/data/
 node_modules/
 frontend/dist/
 .env
+
+# local scratch testing area (never committed)
+testing/
