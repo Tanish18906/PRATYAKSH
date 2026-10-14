@@ -23,9 +23,10 @@ def find_paths(idx, art: dict, loss: dict, found_at: str, found_ts: str) -> tupl
     """Returns (paths, notes); each path is {"cost": float, "hops": [Hop dicts]}."""
     moves = idx.moves_by_artifact.get(art["id"], [])
     seen_moves = {(e["actor"], e["from_loc"], e["to_loc"]) for e in moves}
-    # (actor, location) pairs where the actor is seen sending something INTO the location: that is evidence of
-    # access even when the location is in nobody's access list (for example an unknown API host)
-    wrote_to = {(e["actor"], e["to_loc"]) for e in idx.events if e["to_loc"] and e["ts"] <= found_ts}
+    # (actor, location) pairs where the actor carried THIS artifact into the location: evidence of access even when
+    # the location is in nobody's access list (for example an unknown API host). Routine calls to the same host and
+    # moves of other files do not count.
+    wrote_to = {(e["actor"], e["to_loc"]) for e in moves if e["ts"] <= found_ts}
     systems = [x["id"] for x in idx.loc.values() if x["kind"] == "system"]
     out, seen, notes, best = [], set(), [], [math.inf]
     alt_cache = {}

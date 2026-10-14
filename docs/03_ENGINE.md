@@ -154,7 +154,7 @@ Moves from a state (try all, depth-first, deterministic order: sort by `(kind, t
 
 **M2 hidden move to the leak location.** If `loc != found_at` and (`loc.kind` in {endpoint, external} or `loc.egress_capable`):
 - Actors: if `loc.kind == endpoint`: `[owner_actor]` (skip if none). Otherwise `[holder] + alt`, where `alt` = up to `ACTOR_ALT_MAX` other actors that have an observed event with `from_loc == loc` or `to_loc == loc` in the `ACTOR_ALT_WINDOW_DAYS` days before `found_ts` (most recent first, tie by id).
-- Actor must have `loc` in its `access` (endpoint owner always passes), OR have an observed event with `to_loc == loc` at or before `found_ts` (it sent something there, so it had access; amended after the real-simulator A2 check).
+- Actor must have `loc` in its `access` (endpoint owner always passes), OR have an observed move of this artifact into `loc` (an event in `moves_by_artifact[E.id]` with `to_loc == loc`) at or before `found_ts`: it carried this file there, so it had access. Routine calls to the same host and moves of other files do not count (amended after the real-simulator A2 check; first version used any event and blamed innocent users).
 - Cost: hidden hop cost (7.1) `+ ACTOR_SWITCH` if `loc.kind == system` and actor != holder.
 - Terminal: the path ends here.
 
