@@ -70,11 +70,12 @@ Fixed in this addendum:
 
 Logged, not changed: ACTOR_ALT_MAX tuning candidate (QUESTIONS.md), request body size limit (IDEAS.md).
 
-NOT done: tie order of `origin_candidates` (item 4 of Tanish's list). It is a change in `backend/app/engine/`, which is outside the
-api module, and the project rule is that only `OVERRIDE OWNERSHIP: engine` extends scope. Waiting for that keyword.
-Note for that change: a tie-break on artifact id is a decision from an id value (03 sec 17, test H8); an id-free tie-break
-(created_ts, then row_count, then creator) with id only as the last resort avoids that.
+3. Tie order of `origin_candidates` (engine, under `OVERRIDE OWNERSHIP: engine`, scope: candidate ordering only): sort by
+   `origin_fit` descending, then created_ts ascending, row_count descending, creator ascending, artifact id ascending as the very last
+   resort; excluded candidates by the same tail. `trace` output no longer depends on the order of the input lists (hostile check 3a: 11
+   differing outputs before, 0 after) and ids never change a score or probability. 10 new tests (precedence, exact ties, shuffle and
+   rename on H1 to H7); H8 and all earlier tests unchanged. One function in `backend/app/engine/origin.py`.
 
-Commands: `cd backend && ../.venv/bin/python -m pytest -q` -> 213 passed (107 engine + 106 api).
+Commands: `cd backend && ../.venv/bin/python -m pytest -q` -> 223 passed (117 engine + 106 api).
 
-STOPPED. Waiting for APPROVED PHASE 5 (addendum) and the engine override for item 4.
+STOPPED. Waiting for APPROVED PHASE 5 (addendum).
