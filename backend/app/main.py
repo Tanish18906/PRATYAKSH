@@ -78,7 +78,7 @@ def _sim():
         return None
     return types.SimpleNamespace(generate_scenario=gen, reveal_value=_sim_fn("reveal_value"),
                                  get_bundle=_sim_fn("get_bundle"), inject_leak=_sim_fn("inject_leak"),
-                                 canary_alert=_sim_fn("canary_alert"))
+                                 canary_alert=_sim_fn("canary_alert"), warm_cache=_sim_fn("warm_cache"))
 
 
 def register(public: dict, bundle=None) -> None:
@@ -90,10 +90,21 @@ def load_fixtures() -> None:
         register(json.loads(path.read_text()))
 
 
+def _warm(sim) -> None:
+    for scale in ("demo", "bench"):
+        try:
+            sim.warm_cache(scale)
+        except Exception as exc:  # a failed warm-up only makes the first request slower
+            print(f"warning: simulator cache warm-up for {scale} failed: {type(exc).__name__}: {exc}")
+
+
 @asynccontextmanager
 async def lifespan(_app):
-    if _sim() is None:
+    sim = _sim()
+    if sim is None:
         load_fixtures()
+    elif getattr(sim, "warm_cache", None) is not None:
+        threading.Thread(target=_warm, args=(sim,), daemon=True).start()
     yield
 
 

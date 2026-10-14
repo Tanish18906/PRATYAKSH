@@ -238,26 +238,28 @@ pip install -r requirements.txt
 # Run test suite to verify math and contract integrity
 pytest -q
 
-# Start the FastAPI backend server (port 8000)
-uvicorn app.main:app --port 8000 --reload
+# Start the FastAPI backend server (port 8000), one worker
+uvicorn app.main:app --port 8000
 ```
 
 > **Run exactly one uvicorn worker (the default). Do not pass `--workers`.** Loaded scenarios, audit numbering and
 > benchmark state live in the memory of one process, and audit ids are made unique with an in-process lock.
 
-Verify backend health:
+Smoke test (server running in another terminal; each line was run as written):
 ```bash
-curl http://localhost:8000/api/health
-# Returns: {"status":"ok","contract_version":"1.0","engine_version":"1.0.0"}
-```
+curl -s http://127.0.0.1:8000/api/health
+# {"status":"ok","contract_version":"1.0","engine_version":"1.0.0"}
 
-Trace one of the built-in hand-written test scenarios (`scn:H1` to `scn:H8`, loaded automatically until the simulator is available):
-```bash
-curl http://localhost:8000/api/scenario/scn:H1
-curl -X POST http://localhost:8000/api/leak/export -H 'content-type: application/json' -d '{"scenario_id":"scn:H1","message_id":1}'
-curl -X POST http://localhost:8000/api/trace -H 'content-type: application/json' -d '{"scenario_id":"scn:H1"}'
+curl -s -X POST http://127.0.0.1:8000/api/scenario/generate -H 'content-type: application/json' -d '{"archetype":"A1","seed":42,"log_loss":0.4,"canary_mode":false,"scale":"demo"}'
+# a ScenarioSummary whose "id" is "scn:A1-42-L40"
+
+curl -s -X POST http://127.0.0.1:8000/api/trace -H 'content-type: application/json' -d '{"scenario_id":"scn:A1-42-L40"}'
+# a TraceResult: origin art:E1, top hypothesis act:ravi-menon, last hop inferred
+
+python backend/scripts/smoke.py     # does the three calls above and prints PASS or FAIL (run from the repo root)
 ```
-All data is SIMULATED. Every export and trace appends one line to `backend/data/audit.jsonl`.
+All data is SIMULATED. Every generate, export, trace, reveal, report and benchmark appends one line to `backend/data/audit.jsonl`.
+When no simulator is available the API loads the hand-written scenarios `scn:H1` to `scn:H8` instead and `generate` answers 409.
 
 ---
 

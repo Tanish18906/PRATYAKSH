@@ -176,3 +176,25 @@ def test_api_accepts_a_scenario_with_a_null_object_permission_change(client):
     r = client.post("/api/trace", json={"scenario_id": "scn:PERM"})
     assert r.status_code == 200, r.text
     assert client.get("/api/scenario/scn:PERM", params={"full": "true"}).json() == pub
+
+
+def test_startup_warms_the_simulator_cache_in_a_background_thread(monkeypatch):
+    import threading
+    import time
+    called, done = [], threading.Event()
+
+    def warm(scale):
+        called.append((scale, threading.current_thread() is not threading.main_thread()))
+        if len(called) == 2:
+            done.set()
+
+    monkeypatch.setattr(main, "_sim", lambda: types.SimpleNamespace(
+        generate_scenario=lambda *a: None, reveal_value=None, get_bundle=lambda i: None, inject_leak=None,
+        canary_alert=None, warm_cache=warm))
+    t = time.time()
+    from fastapi.testclient import TestClient
+    with TestClient(main.app):
+        assert time.time() - t < 5  # startup does not wait for the cache
+        assert done.wait(5)
+    assert sorted(c[0] for c in called) == ["bench", "demo"] and all(c[1] for c in called)
+    assert main.STORE == {} or "scn:H1" not in main.STORE  # fixtures are not loaded when a simulator exists
