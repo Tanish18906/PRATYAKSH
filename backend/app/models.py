@@ -402,3 +402,22 @@ class ApiErrorBody(_M):
 
 class ApiError(_M):
     error: ApiErrorBody
+
+
+# ---- request bodies (section 12)
+class GenerateRequest(_M):
+    archetype: Archetype
+    seed: int
+    log_loss: float = Field(ge=0.0, le=0.8)
+    canary_mode: bool
+    scale: Scale
+
+
+class ExportRequest(_M):
+    scenario_id: str
+    message_id: int
+
+
+class TraceRequest(_M):
+    scenario_id: str
+    top_k: int | None = Field(default=None, ge=1, le=20)

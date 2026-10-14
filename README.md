@@ -248,6 +248,14 @@ curl http://localhost:8000/api/health
 # Returns: {"status":"ok","contract_version":"1.0","engine_version":"1.0.0"}
 ```
 
+Trace one of the built-in hand-written test scenarios (`scn:H1` to `scn:H8`, loaded automatically until the simulator is available):
+```bash
+curl http://localhost:8000/api/scenario/scn:H1
+curl -X POST http://localhost:8000/api/leak/export -H 'content-type: application/json' -d '{"scenario_id":"scn:H1","message_id":1}'
+curl -X POST http://localhost:8000/api/trace -H 'content-type: application/json' -d '{"scenario_id":"scn:H1"}'
+```
+All data is SIMULATED. Every export and trace appends one line to `backend/data/audit.jsonl`.
+
 ---
 
 ### 2. Frontend Setup
