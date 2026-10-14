@@ -1,45 +1,271 @@
+// Main App Component for PUGMARK
+// Follows UI_UX_DESIGN.md section 4 & 5 and FRONTEND.md section 4
+
 import React from 'react';
+import { AppProvider, useApp } from './state/AppContext';
+import Header from './components/Header';
+import ScenarioControls from './components/ScenarioControls';
+import IncidentPanel from './components/IncidentPanel';
+import ProvenanceGraph from './components/ProvenanceGraph';
+import HypothesisPanel from './components/HypothesisPanel';
+import OriginMatchTab from './components/OriginMatchTab';
+import ContainmentTab from './components/ContainmentTab';
+import BenchmarkTab from './components/BenchmarkTab';
+import ReportTab from './components/ReportTab';
+import AuditTab from './components/AuditTab';
+import RevealDialog from './components/RevealDialog';
+import InjectDialog from './components/InjectDialog';
+import ErrorMessage from './components/ErrorMessage';
+import { ActiveTab } from './state/reducer';
 
-export const App: React.FC = () => {
+const Dashboard: React.FC = () => {
+  const {
+    state,
+    setControls,
+    setActiveTab,
+    setSelectedPath,
+    dismissError,
+    openRevealDialog,
+    closeRevealDialog,
+    setInjectDialogOpen,
+    handleGenerate,
+    handleExportAndTrace,
+    handleTrace,
+    handleRevealConfirm,
+    handleInjectConfirm,
+    handleCanaryAlert,
+    handleRunBenchmark,
+    handleDownloadReport,
+  } = useApp();
+
+  const {
+    controls,
+    scenario,
+    leakSample,
+    trace,
+    benchmark,
+    auditEntries,
+    reportHtml,
+    selectedPathId,
+    activeTab,
+    offlineReplay,
+    busy,
+    busyMessage,
+    error,
+    revealDialog,
+    revealedValue,
+    injectDialogOpen,
+  } = state;
+
+  const hasTraced = Boolean(trace && trace.hypotheses.length > 0);
+
+  const tabs: Array<{ id: ActiveTab; label: string; badge?: number | string }> = [
+    {
+      id: 'origin',
+      label: 'Origin Match',
+      badge: trace?.origin_candidates.length,
+    },
+    {
+      id: 'containment',
+      label: 'Containment',
+      badge: trace?.chokepoints.length,
+    },
+    {
+      id: 'benchmark',
+      label: 'Benchmark',
+    },
+    {
+      id: 'report',
+      label: 'Incident Report',
+      badge: reportHtml ? 'Ready' : undefined,
+    },
+    {
+      id: 'audit',
+      label: 'Audit Log',
+      badge: auditEntries.length > 0 ? auditEntries.length : undefined,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-background text-text-primary flex flex-col">
-      {/* Top Header */}
-      <header className="border-b border-border bg-surface px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-bold tracking-wider text-text-primary">
-            PUGMARK
-          </h1>
-          <span className="px-2.5 py-0.5 rounded text-xs font-semibold bg-accent-dark text-accent border border-accent/30 tracking-wider">
-            SIMULATED
-          </span>
-        </div>
-        <div className="flex items-center space-x-6 text-sm text-text-secondary">
-          <div className="flex items-center space-x-2">
-            <span className="h-2 w-2 rounded-full bg-success"></span>
-            <span>SYSTEM READY</span>
-          </div>
-          <span className="font-mono text-text-muted">UTC</span>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background text-text-primary flex flex-col font-sans select-text">
+      {/* 1. Header */}
+      <Header offlineReplay={offlineReplay} simulated={true} />
 
-      {/* Main Shell Workspace */}
-      <main className="flex-1 p-6 flex flex-col items-center justify-center text-center">
-        <div className="max-w-md p-8 rounded-lg bg-surface border border-border">
-          <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-surface-raised flex items-center justify-center border border-border">
-            <span className="text-accent text-2xl font-bold">P</span>
+      {/* 2. Top Bar Controls */}
+      <ScenarioControls
+        scenario={scenario}
+        controls={controls}
+        busy={busy}
+        offlineReplay={offlineReplay}
+        onControlsChange={setControls}
+        onGenerate={handleGenerate}
+        onTrace={handleTrace}
+        onInject={() => setInjectDialogOpen(true)}
+        onBenchmark={() => {
+          setActiveTab('benchmark');
+          handleRunBenchmark();
+        }}
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 p-4 lg:p-6 space-y-6 max-w-[1720px] mx-auto w-full">
+        {/* Error Alert */}
+        <ErrorMessage message={error} onDismiss={dismissError} />
+
+        {/* 3. Three-Column Investigation Workspace */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Left Column: Incident Panel (approx 25% = 3 cols) */}
+          <div className="lg:col-span-3">
+            <IncidentPanel
+              scenario={scenario}
+              leakSample={leakSample}
+              hasTraced={hasTraced}
+              offlineReplay={offlineReplay}
+              busy={busy}
+              onReveal={(rIdx, field, val) => openRevealDialog(rIdx, field, val)}
+              onExportAndTrace={handleExportAndTrace}
+            />
           </div>
-          <h2 className="text-lg font-semibold text-text-primary mb-2">
-            PUGMARK Forensic Investigation Shell
-          </h2>
-          <p className="text-sm text-text-secondary mb-4">
-            Phase 0 scaffold loaded. Ready for investigation workspace, Cytoscape graph, and mock Telegram discovery.
-          </p>
-          <div className="inline-flex items-center px-3 py-1 rounded bg-surface-raised text-xs text-text-muted font-mono border border-border">
-            Contract v1.0 • Offline Ready
+
+          {/* Center Column: Provenance Graph (approx 50% = 6 cols) */}
+          <div className="lg:col-span-6 flex flex-col">
+            <div className="flex-1 min-h-[480px]">
+              <ProvenanceGraph
+                graph={trace?.graph || null}
+                hypotheses={trace?.hypotheses || []}
+                selectedPathId={selectedPathId}
+                onSelectPath={setSelectedPath}
+              />
+            </div>
+          </div>
+
+          {/* Right Column: Ranked Hypotheses (approx 25% = 3 cols) */}
+          <div className="lg:col-span-3">
+            <HypothesisPanel
+              hypotheses={trace?.hypotheses || []}
+              selectedPathId={selectedPathId}
+              onSelectPath={setSelectedPath}
+            />
+          </div>
+        </div>
+
+        {/* 4. Investigation Tabs Section */}
+        <div className="bg-surface rounded-lg border border-border overflow-hidden shadow-sm">
+          {/* Tab Navigation Header */}
+          <div className="flex border-b border-border bg-surface-raised px-4 pt-2 space-x-1 overflow-x-auto">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2.5 text-xs font-semibold rounded-t-md transition-colors flex items-center space-x-2 border-t-2 ${
+                    isActive
+                      ? 'bg-surface text-accent border-accent shadow-xs'
+                      : 'text-text-muted hover:text-text-primary border-transparent hover:bg-surface/50'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  {tab.badge !== undefined && (
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        isActive
+                          ? 'bg-accent-dark text-accent'
+                          : 'bg-surface text-text-muted border border-border'
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tab Content Panel */}
+          <div className="p-4 lg:p-6 bg-surface min-h-[300px]">
+            {activeTab === 'origin' && (
+              <OriginMatchTab candidates={trace?.origin_candidates || []} />
+            )}
+
+            {activeTab === 'containment' && (
+              <ContainmentTab
+                chokepoints={trace?.chokepoints || []}
+                recommendedEvidence={trace?.recommended_evidence || []}
+                originPinned={Boolean(trace?.origin_pinned)}
+                canaryHits={leakSample?.canary_hits || []}
+                offlineReplay={offlineReplay}
+                onCanaryAlert={handleCanaryAlert}
+              />
+            )}
+
+            {activeTab === 'benchmark' && (
+              <BenchmarkTab
+                benchmark={benchmark}
+                busy={busy}
+                offlineReplay={offlineReplay}
+                onRun={handleRunBenchmark}
+              />
+            )}
+
+            {activeTab === 'report' && (
+              <ReportTab
+                trace_id={trace?.trace_id || null}
+                reportHtml={reportHtml}
+                busy={busy}
+                offlineReplay={offlineReplay}
+                onDownload={handleDownloadReport}
+              />
+            )}
+
+            {activeTab === 'audit' && <AuditTab entries={auditEntries} />}
           </div>
         </div>
       </main>
+
+      {/* 5. Modals & Dialogs */}
+      {revealDialog && (
+        <RevealDialog
+          open={revealDialog.open}
+          field={revealDialog.field}
+          rowIndex={revealDialog.rowIndex}
+          currentMaskedValue={revealDialog.currentMaskedValue}
+          revealedValue={revealedValue}
+          busy={busy}
+          onConfirm={handleRevealConfirm}
+          onCancel={closeRevealDialog}
+        />
+      )}
+
+      {scenario && (
+        <InjectDialog
+          open={injectDialogOpen}
+          actors={scenario.actors}
+          busy={busy}
+          onConfirm={handleInjectConfirm}
+          onCancel={() => setInjectDialogOpen(false)}
+        />
+      )}
+
+      {/* Busy Spinner Overlay */}
+      {busy && (
+        <div className="fixed bottom-6 right-6 z-50 bg-surface-raised border border-accent/40 rounded-lg px-4 py-3 shadow-2xl flex items-center space-x-3">
+          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs font-mono font-medium text-text-primary">
+            {busyMessage || 'Processing forensic operation...'}
+          </span>
+        </div>
+      )}
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <AppProvider>
+      <Dashboard />
+    </AppProvider>
   );
 };
 
