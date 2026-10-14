@@ -421,3 +421,20 @@ class ExportRequest(_M):
 class TraceRequest(_M):
     scenario_id: str
     top_k: int | None = Field(default=None, ge=1, le=20)
+
+
+class RevealRequest(_M):
+    scenario_id: str
+    object: Literal["leak_sample"]
+    row_index: int
+    field: str
+    reason: str | None = None  # checked by the endpoint so a missing reason is `reason_required`, not `bad_request`
+
+
+class RevealResponse(_M):
+    value: str
+    audit_id: str
+
+
+class AuditList(_M):
+    entries: list[AuditEntry]

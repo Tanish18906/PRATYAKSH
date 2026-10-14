@@ -1,11 +1,14 @@
 """PUGMARK API (docs/01_DATA_CONTRACT.md section 12).
 
 Phase 1: scenario generate/get, leak export, trace, JSON error shape, audit append.
+Phase 2: reveal (reason of at least 8 characters, audited) and the audit list.
 Scenarios come from the simulator when it exists (`_sim()`); until then the hand-written fixtures
-H1..H8 are registered at startup and `generate` answers 409 not_ready.
+H1..H8 are registered at startup, `generate` answers 409 not_ready and so does `reveal` (no private store).
 """
 import copy
+import importlib
 import json
+import types
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -17,8 +20,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import CONTRACT_VERSION, ENGINE
 from app.engine.trace import trace as run_trace
-from app.models import (ExportRequest, GenerateRequest, PublicScenario, ScenarioSummary, TraceRequest,
-                        TraceResult)
+from app.models import (AuditList, ExportRequest, GenerateRequest, PublicScenario, RevealRequest,
+                        RevealResponse, ScenarioSummary, TraceRequest, TraceResult)
 from app.privacy import audit
 from app.privacy.mask import mask_value
 
@@ -38,13 +41,27 @@ def _error(status: int, code: str, message: str) -> JSONResponse:
     return JSONResponse({"error": {"code": code, "message": message}}, status_code=status)
 
 
+_SIM_MODULES = ("app.sim", "app.sim.generator", "app.sim.leakfile", "app.sim.store")
+
+
+def _sim_fn(name: str):
+    for mod in _SIM_MODULES:
+        try:
+            fn = getattr(importlib.import_module(mod), name, None)
+        except Exception:
+            fn = None
+        if callable(fn):
+            return fn
+    return None
+
+
 def _sim():
-    """The simulator's generator module if it provides generate_scenario, else None."""
-    try:
-        from app.sim import generator
-    except Exception:
+    """The simulator's public functions (docs/02 sec 3) if generate_scenario exists, else None."""
+    gen = _sim_fn("generate_scenario")
+    if gen is None:
         return None
-    return generator if callable(getattr(generator, "generate_scenario", None)) else None
+    return types.SimpleNamespace(generate_scenario=gen, reveal_value=_sim_fn("reveal_value"),
+                                 get_bundle=_sim_fn("get_bundle"))
 
 
 def register(public: dict, bundle=None) -> None:
@@ -102,8 +119,9 @@ def _ok(model, **dump) -> JSONResponse:
 
 def _lookup(scenario_id: str) -> dict:
     entry = STORE.get(scenario_id)
-    if entry is None and _sim() is not None and callable(getattr(_sim(), "get_bundle", None)):
-        bundle = _sim().get_bundle(scenario_id)
+    sim = _sim()
+    if entry is None and sim is not None and callable(getattr(sim, "get_bundle", None)):
+        bundle = sim.get_bundle(scenario_id)
         if bundle is not None:
             register(bundle.public, bundle)
             entry = STORE[scenario_id]
@@ -181,3 +199,34 @@ def trace(req: TraceRequest):
         raise ApiException(500, "engine_error", f"trace failed: {type(exc).__name__}")
     audit.append("trace", scenario_id=sc.id, object_id=result.trace_id)
     return _ok(result)
+
+
+@app.post("/api/reveal")
+def reveal(req: RevealRequest):
+    reason = (req.reason or "").strip()
+    if len(reason) < 8:
+        raise ApiException(400, "reason_required", "a justification of at least 8 characters is required")
+    entry = _lookup(req.scenario_id)
+    leak = _public(entry).leak_sample
+    if req.field not in leak.columns:
+        raise ApiException(400, "bad_request", f"field {req.field} is not a column of the leak sample")
+    if not 0 <= req.row_index < leak.row_count:
+        raise ApiException(400, "bad_request", f"row_index must be between 0 and {leak.row_count - 1}")
+    sim = _sim()
+    fn = getattr(sim, "reveal_value", None) if sim is not None else None
+    if fn is None or entry["bundle"] is None:
+        raise ApiException(409, "not_ready", "no private store is available for this scenario")
+    try:
+        value = fn(entry["bundle"], req.row_index, req.field)
+    except Exception as exc:
+        raise ApiException(500, "engine_error", f"reveal failed: {type(exc).__name__}")
+    logged = audit.append("reveal", scenario_id=entry["public"]["id"],
+                          object_id=f"{leak.id}#{req.row_index}", field=req.field, reason=reason)
+    resp = JSONResponse(RevealResponse(value=str(value), audit_id=logged["id"]).model_dump())
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@app.get("/api/audit")
+def audit_list(scenario_id: str | None = None):
+    return _ok(AuditList(entries=audit.entries(scenario_id)))
