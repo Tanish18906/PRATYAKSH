@@ -62,7 +62,7 @@ const Dashboard: React.FC = () => {
   const tabs: Array<{ id: ActiveTab; label: string; badge?: number | string }> = [
     {
       id: 'origin',
-      label: 'Origin Match',
+      label: 'Origin match',
       badge: trace?.origin_candidates.length,
     },
     {
@@ -76,12 +76,12 @@ const Dashboard: React.FC = () => {
     },
     {
       id: 'report',
-      label: 'Incident Report',
+      label: 'Report',
       badge: reportHtml ? 'Ready' : undefined,
     },
     {
       id: 'audit',
-      label: 'Audit Log',
+      label: 'Audit',
       badge: auditEntries.length > 0 ? auditEntries.length : undefined,
     },
   ];
@@ -232,6 +232,7 @@ const Dashboard: React.FC = () => {
           rowIndex={revealDialog.rowIndex}
           currentMaskedValue={revealDialog.currentMaskedValue}
           revealedValue={revealedValue}
+          error={error}
           busy={busy}
           onConfirm={handleRevealConfirm}
           onCancel={closeRevealDialog}

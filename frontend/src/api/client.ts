@@ -26,19 +26,43 @@ export class ApiRequestError extends Error {
   }
 }
 
+// Exact error microcopy from UI_UX_DESIGN.md section 9.4
+const ERROR_TEXT: Record<string, string> = {
+  bad_request: 'Invalid request. Check the selected inputs.',
+  not_found: 'The requested scenario or result was not found.',
+  reason_required: 'Enter a reason of at least 8 characters.',
+  engine_error: 'The tracing engine could not complete this operation.',
+  not_ready: 'This result is not ready yet. Try again shortly.',
+  network: 'Cannot connect to the local backend.',
+};
+
+export function errorText(err: unknown, fallback: string): string {
+  return (err instanceof ApiRequestError && ERROR_TEXT[err.code]) || fallback;
+}
+
+const REQUEST_TIMEOUT_MS = 30000;
+
 async function request<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  asText = false
 ): Promise<T> {
   const headers = new Headers(options.headers || {});
   if (options.body && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
 
-  const res = await fetch(path, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(path, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS), ...options, headers });
+  } catch {
+    // fetch rejects only on network failure, timeout or abort
+    throw new ApiRequestError('network', 'Network request failed', 0);
+  }
 
   if (!res.ok) {
-    let errorCode = 'bad_request';
+    // Non-JSON 5xx comes from the Vite proxy when the backend is unreachable
+    let errorCode = res.status === 404 ? 'not_found' : res.status >= 500 ? 'network' : 'bad_request';
     let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
     try {
       const errJson = (await res.json()) as ApiError;
@@ -52,7 +76,7 @@ async function request<T>(
     throw new ApiRequestError(errorCode, errorMessage, res.status);
   }
 
-  return (await res.json()) as T;
+  return (asText ? await res.text() : await res.json()) as T;
 }
 
 export async function getHealth(signal?: AbortSignal): Promise<{ status: string; contract_version: string; engine_version: string }> {
@@ -163,11 +187,7 @@ export async function getBenchmark(id: string): Promise<BenchmarkResult> {
 }
 
 export async function getReport(trace_id: string): Promise<string> {
-  const res = await fetch(`/api/report/${encodeURIComponent(trace_id)}`);
-  if (!res.ok) {
-    throw new ApiRequestError('not_found', `Failed to load report: ${res.statusText}`, res.status);
-  }
-  return res.text();
+  return request<string>(`/api/report/${encodeURIComponent(trace_id)}`, { method: 'GET' }, true);
 }
 
 export async function fetchOfflineDemoBundle(): Promise<DemoBundle> {

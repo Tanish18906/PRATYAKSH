@@ -1,7 +1,7 @@
 // RevealDialog component
 // Follows UI_UX_DESIGN.md section 5.12 and FRONTEND.md section 5
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface RevealDialogProps {
   open: boolean;
@@ -9,6 +9,7 @@ interface RevealDialogProps {
   rowIndex: number;
   currentMaskedValue: string;
   revealedValue: string | null;
+  error: string | null;
   busy: boolean;
   onConfirm: (reason: string) => void;
   onCancel: () => void;
@@ -20,19 +21,45 @@ export const RevealDialog: React.FC<RevealDialogProps> = ({
   rowIndex,
   currentMaskedValue,
   revealedValue,
+  error,
   busy,
   onConfirm,
   onCancel,
 }) => {
   const [reason, setReason] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const d = dialogRef.current;
+    (d?.querySelector('textarea') ?? d?.querySelector('button'))?.focus();
+  }, [open]);
 
   if (!open) return null;
+
+  // Escape closes without submitting; Tab cycles within the dialog
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onCancel();
+      return;
+    }
+    if (e.key !== 'Tab' || !dialogRef.current) return;
+    const items = dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), textarea');
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (reason.trim().length < 8) {
-      setValidationError('Reason must be at least 8 characters long to satisfy privacy compliance.');
+      setValidationError('Enter a reason of at least 8 characters.');
       return;
     }
     setValidationError(null);
@@ -41,18 +68,25 @@ export const RevealDialog: React.FC<RevealDialogProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-      <div className="bg-surface-raised border border-border rounded-lg max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reveal-title"
+        onKeyDown={handleKeyDown}
+        className="bg-surface-raised border border-border rounded-lg max-w-md w-full p-6 shadow-2xl space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border">
           <div className="flex items-center space-x-2">
             <span className="text-xl">🔓</span>
-            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">
-              Request Forensic Data Reveal
+            <h3 id="reveal-title" className="text-sm font-bold text-text-primary uppercase tracking-wider" title="Requires a reason and creates an audit entry.">
+              Reveal
             </h3>
           </div>
           <button
             type="button"
             onClick={onCancel}
+            aria-label="Cancel"
             className="text-text-muted hover:text-text-primary text-sm font-bold"
           >
             ✕
@@ -100,7 +134,7 @@ export const RevealDialog: React.FC<RevealDialogProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="reveal-reason" className="block text-xs font-semibold text-text-primary mb-1">
-                Forensic Justification (Min 8 Characters)
+                Reason for reveal
               </label>
               <textarea
                 id="reveal-reason"
@@ -115,8 +149,8 @@ export const RevealDialog: React.FC<RevealDialogProps> = ({
                 placeholder="e.g. Identity verification for customer leak notification..."
                 className="w-full bg-surface border border-border rounded p-2 text-xs text-text-primary focus:border-accent focus:outline-none resize-none"
               />
-              {validationError && (
-                <p className="text-danger text-[11px] mt-1">{validationError}</p>
+              {(validationError || error) && (
+                <p role="alert" className="text-danger text-[11px] mt-1">{validationError || error}</p>
               )}
             </div>
 
@@ -133,7 +167,7 @@ export const RevealDialog: React.FC<RevealDialogProps> = ({
                 disabled={busy || reason.trim().length < 8}
                 className="px-4 py-2 text-xs font-bold rounded bg-accent hover:bg-accent/90 text-background shadow-md disabled:opacity-50"
               >
-                {busy ? 'Auditing...' : 'Reveal Value'}
+                {busy ? 'Recording reveal...' : 'Reveal value'}
               </button>
             </div>
           </form>

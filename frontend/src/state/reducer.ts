@@ -200,6 +200,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           currentMaskedValue: action.payload.currentMaskedValue,
         },
         revealedValue: null,
+        error: null, // a stale error must not appear inside the new dialog
       };
 
     case 'CLOSE_REVEAL_DIALOG':

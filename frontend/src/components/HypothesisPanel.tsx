@@ -3,7 +3,9 @@
 
 import React from 'react';
 import { Hypothesis } from '../types/contract';
-import { formatProbability, formatUtcShort } from '../utils/format';
+import { formatNumber, formatProbability, formatUtcShort } from '../utils/format';
+
+const LIKELIHOOD_TIP = 'A score normalized across candidate paths. It is not a calibrated probability.';
 
 interface HypothesisPanelProps {
   hypotheses: Hypothesis[];
@@ -19,11 +21,7 @@ export const HypothesisPanel: React.FC<HypothesisPanelProps> = ({
   if (!hypotheses || hypotheses.length === 0) {
     return (
       <div className="bg-surface rounded-lg border border-border p-6 text-center text-text-muted">
-        <span className="text-2xl block mb-2">🔍</span>
-        <h3 className="text-sm font-semibold text-text-primary mb-1">No Hypotheses Generated</h3>
-        <p className="text-xs">
-          Export and trace an incident sample or run a trace to evaluate candidate custody paths.
-        </p>
+        <p className="text-xs">No trace available. Export the simulated leak and run a trace.</p>
       </div>
     );
   }
@@ -33,10 +31,10 @@ export const HypothesisPanel: React.FC<HypothesisPanelProps> = ({
       <div className="flex items-center justify-between pb-2 border-b border-border">
         <div>
           <h2 className="text-sm font-bold uppercase tracking-wider text-text-primary">
-            Ranked Hypotheses
+            Ranked hypotheses
           </h2>
-          <span className="text-[11px] text-text-muted">
-            Ranked by relative likelihood (uncalibrated)
+          <span className="text-[11px] text-text-muted block">
+            Rankings express relative likelihood, not a finding of responsibility.
           </span>
         </div>
         <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-surface-raised border border-border text-text-secondary">
@@ -79,7 +77,9 @@ export const HypothesisPanel: React.FC<HypothesisPanelProps> = ({
                   <span className="text-xs font-mono font-bold text-accent">
                     {formatProbability(hyp.probability)}
                   </span>
-                  <span className="text-[10px] text-text-muted block">Relative Likelihood</span>
+                  <span className="text-[10px] text-text-muted block" title={LIKELIHOOD_TIP}>
+                    Relative likelihood
+                  </span>
                 </div>
               </div>
 
@@ -87,7 +87,7 @@ export const HypothesisPanel: React.FC<HypothesisPanelProps> = ({
               <div className="w-full bg-surface-raised h-1.5 rounded-full overflow-hidden mb-3 border border-border">
                 <div
                   className="bg-accent h-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, Math.max(5, hyp.probability * 100))}%` }}
+                  style={{ width: `${hyp.probability * 100}%` }}
                 ></div>
               </div>
 
@@ -104,11 +104,44 @@ export const HypothesisPanel: React.FC<HypothesisPanelProps> = ({
                 <span className="text-text-secondary">{hyp.actors.join(', ')}</span>
               </div>
 
+              {isSelected && (
+                <ol className="mb-3 space-y-1 text-[11px] font-mono">
+                  {hyp.hops.map((hop, i) => (
+                    <li
+                      key={i}
+                      className={`p-1.5 rounded border ${
+                        hop.kind === 'inferred' ? 'border-dashed border-inferred/50' : 'border-border'
+                      }`}
+                    >
+                      <div className="text-text-primary">
+                        {hop.from_loc} → {hop.to_loc}
+                      </div>
+                      <div className="text-text-muted">
+                        <span className={hop.kind === 'inferred' ? 'text-inferred font-semibold' : 'text-success'}>
+                          {hop.kind === 'inferred' ? 'Inferred' : 'Observed'}
+                        </span>
+                        {' · '}
+                        {hop.actor} · {formatUtcShort(hop.ts)}
+                        {hop.action && ` · ${hop.action}`}
+                        {hop.rows !== null && ` · ${formatNumber(hop.rows)} rows`}
+                      </div>
+                      {hop.kind === 'inferred' && (
+                        <div className="text-inferred">
+                          {hop.est_loss !== null
+                            ? `Log missing. Estimated loss: ${Math.round(hop.est_loss * 100)}%.`
+                            : 'Log missing.'}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              )}
+
               {/* Evidence Items */}
               {hyp.evidence && hyp.evidence.length > 0 && (
                 <div className="space-y-1.5 pt-2 border-t border-border">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted block">
-                    Reconstructed Evidence
+                    Evidence
                   </span>
                   <div className="space-y-1">
                     {hyp.evidence.map((ev, evIdx) => {
@@ -153,6 +186,22 @@ export const HypothesisPanel: React.FC<HypothesisPanelProps> = ({
                   </div>
                 </div>
               )}
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectPath(hyp.path_id);
+                }}
+                aria-pressed={isSelected}
+                className={`mt-3 w-full px-2 py-1 rounded text-[11px] font-semibold border ${
+                  isSelected
+                    ? 'bg-accent/15 text-accent border-accent/40'
+                    : 'bg-surface-raised text-text-secondary border-border hover:text-text-primary'
+                }`}
+              >
+                {isSelected ? 'Path selected' : 'Select path'}
+              </button>
             </div>
           );
         })}

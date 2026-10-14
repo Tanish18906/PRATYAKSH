@@ -4,27 +4,14 @@
 import { Graph as ContractGraph } from '../types/contract';
 import cytoscape, { ElementDefinition, StylesheetStyle } from 'cytoscape';
 
-export function mapContractGraphToElements(
-  graph: ContractGraph,
-  selectedPathId: string | null
-): ElementDefinition[] {
+export function mapContractGraphToElements(graph: ContractGraph): ElementDefinition[] {
   const elements: ElementDefinition[] = [];
 
-  // 1. Add nodes
   for (const node of graph.nodes) {
-    elements.push({
-      data: {
-        id: node.id,
-        label: node.label || node.id,
-        kind: node.kind,
-      },
-    });
+    elements.push({ data: { id: node.id, label: node.label || node.id, kind: node.kind } });
   }
 
-  // 2. Add edges
   for (const edge of graph.edges) {
-    const isSelected = selectedPathId ? edge.path_ids.includes(selectedPathId) : false;
-
     elements.push({
       data: {
         id: edge.id,
@@ -35,7 +22,6 @@ export function mapContractGraphToElements(
         ts: edge.ts,
         event_id: edge.event_id,
         path_ids: edge.path_ids,
-        selected_path: isSelected ? 'true' : 'false',
       },
     });
   }
@@ -155,52 +141,47 @@ export const cytoscapeStyles: StylesheetStyle[] = [
     },
   },
 
-  // Selected Path Highlighting
+  // Hover: thicker border, emphasized connected edges
   {
-    selector: 'edge[selected_path = "true"]',
-    style: {
-      width: 4,
-      opacity: 1,
-      'z-index': 99,
-    },
+    selector: 'node.hover',
+    style: { 'border-width': 4 },
   },
   {
-    selector: 'edge[selected_path = "true"][kind = "observed"]',
-    style: {
-      'line-color': '#5EEAD4',
-      'target-arrow-color': '#5EEAD4',
-      color: '#5EEAD4',
-    },
+    selector: 'edge.hover',
+    style: { width: 3.5, label: 'data(label)' },
+  },
+
+  // Selected path: classes set by ProvenanceGraph, edge kind styling preserved
+  {
+    selector: 'edge.on-path',
+    style: { width: 5, 'z-index': 99, label: 'data(label)', color: '#F2F7FA' },
   },
   {
-    selector: 'edge[selected_path = "true"][kind = "inferred"]',
+    selector: 'edge.on-path[kind = "observed"]',
+    style: { 'line-color': '#5EEAD4', 'target-arrow-color': '#5EEAD4' },
+  },
+  {
+    selector: 'node.on-path',
+    style: { 'border-width': 4, 'border-color': '#5EEAD4', 'z-index': 100 },
+  },
+  {
+    selector: '.faded',
+    style: { opacity: 0.3 },
+  },
+
+  // Moving-dash overlay drawn over selected-path edges (visual only, never part of TraceResult)
+  {
+    selector: 'edge.flow',
     style: {
-      'line-color': '#F5B95C',
-      'target-arrow-color': '#F5B95C',
+      'curve-style': 'straight', // straight edges are not bundled with the bezier edges underneath
+      width: 2,
+      'line-color': '#F2F7FA',
       'line-style': 'dashed',
-      'line-dash-pattern': [8, 4],
-      color: '#F5B95C',
-    },
-  },
-  {
-    selector: 'edge[selected_path = "false"]',
-    style: {
-      opacity: 0.35,
-    },
-  },
-  {
-    selector: 'node.highlighted',
-    style: {
-      'border-width': 4,
-      'border-color': '#5EEAD4',
-      opacity: 1,
-      'z-index': 100,
-    },
-  },
-  {
-    selector: 'node.dimmed',
-    style: {
-      opacity: 0.4,
+      'line-dash-pattern': [2, 10],
+      'target-arrow-shape': 'none',
+      opacity: 0.9,
+      'z-index': 101,
+      events: 'no',
     },
   },
 ];

@@ -13,7 +13,7 @@ export const AuditTab: React.FC<AuditTabProps> = ({ entries }) => {
   if (!entries || entries.length === 0) {
     return (
       <div className="p-8 text-center text-text-muted">
-        No audit entries recorded yet. All forensic traces, reveals, injections, and report exports are logged here.
+        No audit events recorded yet.
       </div>
     );
   }
@@ -38,7 +38,7 @@ export const AuditTab: React.FC<AuditTabProps> = ({ entries }) => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">
-            Investigator Privacy & Action Audit Log
+            Audit log
           </h3>
           <p className="text-xs text-text-muted">
             Append-only record of forensic actions. Unmasked values are never logged to protect investigator integrity.

@@ -31,7 +31,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const loadOfflineFallback = useCallback(async (errorMessage?: string) => {
     try {
-      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Loading offline replay bundle...' } });
+      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Loading investigation...' } });
       const bundle = await api.fetchOfflineDemoBundle();
       dispatch({
         type: 'LOAD_BUNDLE',
@@ -47,10 +47,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (errorMessage) {
         console.warn('Backend unavailable, running in Offline Replay mode:', errorMessage);
       }
-    } catch (err: unknown) {
+    } catch {
       dispatch({
         type: 'SET_ERROR',
-        payload: err instanceof Error ? err.message : 'Failed to load demo bundle',
+        payload: 'Offline replay data is unavailable.',
       });
     } finally {
       dispatch({ type: 'SET_BUSY', payload: { busy: false } });
@@ -70,7 +70,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!mounted) return;
 
         // Backend is up! Generate initial seed 42 A1 scenario
-        dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Initializing simulated scenario...' } });
+        dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Generating synthetic scenario...' } });
         const scn = await api.generateScenario({
           archetype: 'A1',
           seed: 42,
@@ -141,7 +141,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleGenerate = useCallback(async () => {
     if (state.offlineReplay) return;
     try {
-      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Generating simulated scenario...' } });
+      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Generating synthetic scenario...' } });
       dispatch({ type: 'SET_ERROR', payload: null });
 
       const scn = await api.generateScenario({
@@ -156,7 +156,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const audit = await api.getAudit(scn.id);
       dispatch({ type: 'SET_AUDIT_ENTRIES', payload: audit.entries });
     } catch (err: unknown) {
-      dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Generate failed' });
+      dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The tracing engine could not complete this operation.') });
     } finally {
       dispatch({ type: 'SET_BUSY', payload: { busy: false } });
     }
@@ -173,7 +173,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Fingerprinting leaked sample & tracing origin paths...' } });
+      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Exporting simulated leak...' } });
       dispatch({ type: 'SET_ERROR', payload: null });
 
       // 1. Export leaked sample from simulated discovery
@@ -182,6 +182,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         message_id: messageId,
       });
       dispatch({ type: 'SET_LEAK_SAMPLE', payload: exportRes.leak_sample });
+      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Tracing possible custody paths...' } });
 
       // 2. Run tracing engine
       const traceRes = await api.traceScenario({
@@ -200,7 +201,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Non-fatal
       }
     } catch (err: unknown) {
-      dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Export and trace failed' });
+      dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The tracing engine could not complete this operation.') });
     } finally {
       dispatch({ type: 'SET_BUSY', payload: { busy: false } });
     }
@@ -210,7 +211,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleTrace = useCallback(async () => {
     if (!state.scenario || state.offlineReplay) return;
     try {
-      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Re-evaluating custody paths...' } });
+      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Tracing possible custody paths...' } });
       dispatch({ type: 'SET_ERROR', payload: null });
 
       const traceRes = await api.traceScenario({
@@ -222,7 +223,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const auditRes = await api.getAudit(state.scenario.id);
       dispatch({ type: 'SET_AUDIT_ENTRIES', payload: auditRes.entries });
     } catch (err: unknown) {
-      dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Trace failed' });
+      dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The tracing engine could not complete this operation.') });
     } finally {
       dispatch({ type: 'SET_BUSY', payload: { busy: false } });
     }
@@ -232,7 +233,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleRevealConfirm = useCallback(async (reason: string) => {
     if (!state.scenario || !state.revealDialog || state.offlineReplay) return;
     try {
-      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Auditing and revealing data...' } });
+      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Recording reveal...' } });
       dispatch({ type: 'SET_ERROR', payload: null });
 
       const res = await api.revealValue({
@@ -249,7 +250,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const auditRes = await api.getAudit(state.scenario.id);
       dispatch({ type: 'SET_AUDIT_ENTRIES', payload: auditRes.entries });
     } catch (err: unknown) {
-      dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Reveal failed' });
+      dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The value could not be revealed.') });
     } finally {
       dispatch({ type: 'SET_BUSY', payload: { busy: false } });
     }
@@ -272,7 +273,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const auditRes = await api.getAudit(newScenario.id);
       dispatch({ type: 'SET_AUDIT_ENTRIES', payload: auditRes.entries });
     } catch (err: unknown) {
-      dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Injection failed' });
+      dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The tracing engine could not complete this operation.') });
     } finally {
       dispatch({ type: 'SET_BUSY', payload: { busy: false } });
     }
@@ -295,7 +296,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const auditRes = await api.getAudit(state.scenario.id);
       dispatch({ type: 'SET_AUDIT_ENTRIES', payload: auditRes.entries });
     } catch (err: unknown) {
-      dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Canary alert failed' });
+      dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The tracing engine could not complete this operation.') });
     } finally {
       dispatch({ type: 'SET_BUSY', payload: { busy: false } });
     }
@@ -305,7 +306,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleRunBenchmark = useCallback(async () => {
     if (state.offlineReplay) return;
     try {
-      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Starting benchmark run across loss levels...' } });
+      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Running synthetic benchmark...' } });
       dispatch({ type: 'SET_ERROR', payload: null });
 
       const runRes = await api.runBenchmark({
@@ -328,7 +329,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dispatch({ type: 'SET_AUDIT_ENTRIES', payload: auditRes.entries });
       }
     } catch (err: unknown) {
-      dispatch({ type: 'SET_ERROR', payload: err instanceof Error ? err.message : 'Benchmark run failed' });
+      dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'Synthetic benchmark failed. No results were recorded.') });
     } finally {
       dispatch({ type: 'SET_BUSY', payload: { busy: false } });
     }
