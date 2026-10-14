@@ -11,6 +11,7 @@ class Index:
         self.artifact = {x["id"]: x for x in sc["artifacts"]}
         self.dataset = {x["id"]: x for x in sc["datasets"]}
         self.src_to_loc = {x["id"]: x["location"] for x in sc["log_sources"]}
+        self.src_name = {x["id"]: x["name"] for x in sc["log_sources"]}
         self.events = sorted(sc["events"], key=lambda e: (e["ts"], e["seq"], e["id"]))
         self.events_by_actor = defaultdict(list)
         self.events_by_object = defaultdict(list)

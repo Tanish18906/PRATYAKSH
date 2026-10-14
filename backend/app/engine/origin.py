@@ -32,7 +32,8 @@ def pin_canary(sc: dict) -> tuple:
     return best, notes
 
 
-def format_sim(leak: dict, art: dict) -> float:
+def format_counts(leak: dict, art: dict) -> tuple:
+    """(matching attribute pairs, total pairs) behind format_sim."""
     lp, ep = leak["format_profile"], art["format_profile"]
     pairs = [(lp[k], ep[k]) for k in GLOBAL_ATTRS]
     for c in leak["columns"]:
@@ -40,7 +41,12 @@ def format_sim(leak: dict, art: dict) -> float:
             continue
         lcol, ecol = lp["columns"].get(c, {}), ep["columns"].get(c, {})
         pairs += [(lcol[k], ecol.get(k)) for k in ("style", "case") if k in lcol]
-    return sum(a == b for a, b in pairs) / len(pairs)
+    return sum(a == b for a, b in pairs), len(pairs)
+
+
+def format_sim(leak: dict, art: dict) -> float:
+    matches, total = format_counts(leak, art)
+    return matches / total
 
 
 def _score(leak: dict, art: dict) -> dict:

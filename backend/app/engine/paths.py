@@ -1,8 +1,5 @@
-"""Stage 3 custody paths (docs/03_ENGINE.md section 7).
-
-Phase 1 scope: M1 (observed move) and M2 (hidden move to the leak location) plus the fallback path.
-M3 (hidden download to an endpoint) and M4 (hidden copy between systems) arrive in Phase 2.
-"""
+"""Stage 3 custody paths (docs/03_ENGINE.md section 7): M1 observed move, M2 hidden move to the leak
+location, M3 hidden download to a person's endpoint, M4 hidden copy between systems, plus the fallback."""
 import math
 from datetime import timedelta
 
@@ -26,18 +23,20 @@ def _hop(frm, to, actor, kind, ts=None, event=None, action=None, rows=None, est=
 def find_paths(idx, art: dict, loss: dict, found_at: str, found_ts: str) -> tuple:
     """Returns (paths, notes); each path is {"cost": float, "hops": [Hop dicts]}."""
     moves = idx.moves_by_artifact.get(art["id"], [])
+    seen_moves = {(e["actor"], e["from_loc"], e["to_loc"]) for e in moves}
+    systems = [x["id"] for x in idx.loc.values() if x["kind"] == "system"]
     out, seen, notes, best = [], set(), [], [math.inf]
     alt_cache = {}
+    recent = sorted(idx.events, key=lambda e: (e["ts"], e["id"]), reverse=True)
+    lo = parse_ts(found_ts) - timedelta(days=CFG["ACTOR_ALT_WINDOW_DAYS"])
 
     def alt_actors(loc_id, holder):
         if loc_id not in alt_cache:
-            lo = parse_ts(found_ts) - timedelta(days=CFG["ACTOR_ALT_WINDOW_DAYS"])
             who = []
-            for e in sorted(idx.events, key=lambda e: (e["ts"], e["id"]), reverse=True):
-                if parse_ts(e["ts"]) < lo or e["ts"] > found_ts or loc_id not in (e["from_loc"], e["to_loc"]):
-                    continue
-                if e["actor"] not in who:
-                    who.append(e["actor"])
+            for e in recent:
+                if e["ts"] <= found_ts and parse_ts(e["ts"]) >= lo and loc_id in (e["from_loc"], e["to_loc"]):
+                    if e["actor"] not in who:
+                        who.append(e["actor"])
             alt_cache[loc_id] = who
         return [a for a in alt_cache[loc_id] if a != holder][:CFG["ACTOR_ALT_MAX"]]
 
@@ -56,28 +55,43 @@ def find_paths(idx, art: dict, loss: dict, found_at: str, found_ts: str) -> tupl
             return
         if len(hops) >= CFG["MAX_DEPTH"]:
             return
-        options = []  # (kind, to_loc, actor, event_id, payload)
-        for e in moves:
-            if e["from_loc"] == loc and t <= e["ts"] <= found_ts and e["to_loc"] not in visited:
-                options.append(("observed", e["to_loc"], e["actor"], e["id"], e))
         L = idx.loc[loc]
-        if hidden < CFG["MAX_HIDDEN"] and (L["kind"] in ("endpoint", "external") or L["egress_capable"]):
-            if L["kind"] == "endpoint":
-                actors = [L["owner_actor"]] if L["owner_actor"] else []
-            else:
-                actors = [holder] + alt_actors(loc, holder)
-            for a in actors:
-                if L["kind"] != "endpoint" and loc not in idx.actor[a]["access"]:
-                    continue
-                options.append(("inferred", found_at, a, "", None))
-        for kind, to, actor, eid, e in sorted(options, key=lambda o: o[:4]):
+        options = []  # (kind, to_loc, actor, event_id, extra cost, event)
+        for e in moves:  # M1
+            if e["from_loc"] == loc and t <= e["ts"] <= found_ts and e["to_loc"] not in visited:
+                options.append(("observed", e["to_loc"], e["actor"], e["id"], CFG["OBS_COST"], e))
+        if hidden < CFG["MAX_HIDDEN"]:
+            hop_cost, _ = hidden_cost(idx, loc, loss)
+            if L["kind"] in ("endpoint", "external") or L["egress_capable"]:  # M2
+                if L["kind"] == "endpoint":
+                    actors = [L["owner_actor"]] if L["owner_actor"] else []
+                else:
+                    actors = [holder] + alt_actors(loc, holder)
+                for a in actors:
+                    if L["kind"] != "endpoint" and loc not in idx.actor[a]["access"]:
+                        continue
+                    switch = CFG["ACTOR_SWITCH"] if L["kind"] == "system" and a != holder else 0.0
+                    options.append(("inferred", found_at, a, "", hop_cost + switch, None))
+            if L["kind"] == "system":
+                for a, A in idx.actor.items():  # M3
+                    ep = idx.owner_endpoint.get(a)
+                    if (ep and ep not in visited and loc in A["access"] and ep in A["access"]
+                            and (a, loc, ep) not in seen_moves):
+                        options.append(("inferred", ep, a, "", hop_cost, None))
+                for m in systems:  # M4
+                    if m == loc or m in visited or any(f == loc and to == m for _, f, to in seen_moves):
+                        continue
+                    for a in [holder] + alt_actors(loc, holder):
+                        acc = idx.actor[a]["access"]
+                        if loc in acc and m in acc:
+                            switch = CFG["ACTOR_SWITCH"] if a != holder else 0.0
+                            options.append(("inferred", m, a, "", hop_cost + switch, None))
+        for kind, to, actor, eid, c, e in sorted(options, key=lambda o: o[:4]):
             if kind == "observed":
                 hop = _hop(loc, to, actor, "observed", e["ts"], e["id"], e["action"], e["rows"])
-                dfs(to, e["ts"], actor, hidden, cost + CFG["OBS_COST"], hops + [hop], visited | {to})
+                dfs(to, e["ts"], actor, hidden, cost + c, hops + [hop], visited | {to})
             else:
-                c, est = hidden_cost(idx, loc, loss)
-                if L["kind"] == "system" and actor != holder:
-                    c += CFG["ACTOR_SWITCH"]
+                est = hidden_cost(idx, loc, loss)[1]
                 hop = _hop(loc, to, actor, "inferred", est=est, note="No log was found for this move.")
                 dfs(to, t, actor, hidden + 1, cost + c, hops + [hop], visited | {to})
 
