@@ -71,7 +71,6 @@ const Dashboard: React.FC = () => {
 
   const hypotheses = trace?.hypotheses || [];
   const sample = leakSample || scenario?.leak_sample || null;
-  const caseName = scenario ? `${scenario.company}, case ${scenario.leak_sample.id.split(':').pop()}` : null;
   // Stage dots: 1 Discover, 2 Match (exporting), 3 Trace (engine running), 4 Act (result shown)
   const step = busy && busyMessage ? TRACE_STEPS.indexOf(busyMessage) : -1;
   const stage = trace ? 4 : step >= 2 ? 3 : step >= 0 ? 2 : scenario ? 1 : 0;
@@ -95,7 +94,6 @@ const Dashboard: React.FC = () => {
       <Header
         offlineReplay={offlineReplay}
         simulated
-        caseName={caseName}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onOpenScenario={() => setDrawerOpen(true)}

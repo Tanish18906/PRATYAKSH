@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="frontend/public/logo.svg" alt="PRATYAKSH logo" width="72">
+
 # PRATYAKSH
 
 ### Trace a data leak back to its source, its route and the place to cut it

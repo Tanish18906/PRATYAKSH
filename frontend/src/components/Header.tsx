@@ -16,27 +16,26 @@ const TABS: Array<{ id: ActiveTab; label: string }> = [
 interface HeaderProps {
   offlineReplay: boolean;
   simulated?: boolean;
-  caseName?: string | null;
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
   onOpenScenario: () => void;
   scenarioButtonRef?: React.Ref<HTMLButtonElement>;
 }
 
-const PawMark = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" className="text-accent" fill="currentColor">
-    <ellipse cx="12" cy="16" rx="5" ry="4.2" />
-    <ellipse cx="5.2" cy="10.2" rx="2" ry="2.5" />
-    <ellipse cx="9.4" cy="6.4" rx="2" ry="2.6" />
-    <ellipse cx="14.6" cy="6.4" rx="2" ry="2.6" />
-    <ellipse cx="18.8" cy="10.2" rx="2" ry="2.5" />
+// Logo: an eye on an indigo tile. Pratyaksh means "directly evident", seen with one's own eyes.
+// Same drawing as public/logo.svg (the favicon).
+const LogoMark = () => (
+  <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true" className="shrink-0">
+    <rect width="32" height="32" rx="8" fill="var(--accent)" />
+    <path d="M5 16C9 9.5 23 9.5 27 16C23 22.5 9 22.5 5 16Z" fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
+    <circle cx="16" cy="16" r="4.5" fill="#fff" />
+    <circle cx="16" cy="16" r="2" fill="var(--accent)" />
   </svg>
 );
 
 export const Header: React.FC<HeaderProps> = ({
   offlineReplay,
   simulated = true,
-  caseName,
   activeTab,
   onTabChange,
   onOpenScenario,
@@ -53,10 +52,9 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="h-14 shrink-0 border-b border-line bg-surface px-4 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-      <div className="flex items-center gap-2 min-w-0">
-        <PawMark />
-        <span className="text-[15px] font-semibold text-ink">PRATYAKSH</span>
-        {caseName && <span className="text-[13px] text-ink-3 truncate">{caseName}</span>}
+      <div className="flex min-w-0 items-center gap-2.5">
+        <LogoMark />
+        <span className="text-xl font-bold leading-none tracking-[0.06em] text-ink">PRATYAKSH</span>
       </div>
 
       <nav role="tablist" aria-label="Views" className="flex h-14 items-stretch" onKeyDown={onKeyDown}>
