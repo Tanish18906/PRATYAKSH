@@ -14,7 +14,7 @@ interface ReportTabProps {
 export const ReportTab: React.FC<ReportTabProps> = ({
   trace_id,
   reportHtml,
-  busy: _busy,
+  busy,
   offlineReplay: _offlineReplay,
   onDownload,
 }) => {
@@ -22,9 +22,11 @@ export const ReportTab: React.FC<ReportTabProps> = ({
     return (
       <div className="p-8 text-center text-text-muted space-y-2">
         <span className="text-3xl block">📄</span>
-        <h3 className="text-sm font-semibold text-text-primary">No Incident Report Generated</h3>
-        <p className="text-xs">
-          Run a trace to automatically draft an investigation incident report with observed and inferred evidence.
+        <h3 className="text-lg font-semibold text-text-primary">Incident report</h3>
+        <p className="text-sm">
+          {busy ? 'Loading incident report...' : trace_id
+            ? 'The incident report could not be loaded.'
+            : 'No trace available. Export the simulated leak and run a trace.'}
         </p>
       </div>
     );
@@ -36,9 +38,9 @@ export const ReportTab: React.FC<ReportTabProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">
-            Incident Forensic Report Preview
+            Incident report
           </h3>
-          <p className="text-xs text-text-muted font-mono">
+          <p className="text-sm text-text-muted font-mono">
             Trace ID: {trace_id || 'N/A'} • Sandboxed Preview
           </p>
         </div>
@@ -46,10 +48,10 @@ export const ReportTab: React.FC<ReportTabProps> = ({
         <button
           type="button"
           onClick={onDownload}
-          className="px-3.5 py-1.5 rounded bg-accent hover:bg-accent/90 text-background font-bold text-xs flex items-center space-x-1.5 shadow-md transition-colors"
+          className="px-3.5 py-1.5 rounded bg-accent hover:bg-accent/90 text-background font-bold text-sm flex items-center space-x-1.5 shadow-md transition-colors"
         >
           <span>⬇️</span>
-          <span>Download HTML Report</span>
+          <span>Download report</span>
         </button>
       </div>
 
@@ -58,14 +60,14 @@ export const ReportTab: React.FC<ReportTabProps> = ({
         <iframe
           srcDoc={reportHtml}
           title="Incident Report Preview"
-          sandbox="allow-same-origin"
+          sandbox=""
           className="w-full h-full border-0"
         />
       </div>
 
       {/* Mandatory Statutory Disclaimer */}
-      <div className="p-3 bg-surface rounded border border-border text-center text-xs text-text-muted font-medium">
-        Verify current legal timelines with counsel. (India DPDP Breach Reporting Compliance)
+      <div className="p-3 bg-surface rounded border border-border text-center text-sm text-text-muted font-medium">
+        Verify current legal timelines with counsel.
       </div>
     </div>
   );

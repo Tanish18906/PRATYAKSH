@@ -9,6 +9,7 @@ import {
   BenchmarkResult,
   AuditEntry,
 } from '../types/contract';
+import type { sendCanaryAlert } from '../api/client';
 
 export type ActiveTab = 'origin' | 'containment' | 'benchmark' | 'report' | 'audit';
 
@@ -34,6 +35,7 @@ export interface AppState {
   benchmark: BenchmarkResult | null;
   auditEntries: AuditEntry[];
   reportHtml: string | null;
+  canaryAlert: Awaited<ReturnType<typeof sendCanaryAlert>>['alert'] | null;
   selectedPathId: string | null;
   activeTab: ActiveTab;
   offlineReplay: boolean;
@@ -60,6 +62,7 @@ export const initialState: AppState = {
   benchmark: null,
   auditEntries: [],
   reportHtml: null,
+  canaryAlert: null,
   selectedPathId: null,
   activeTab: 'origin',
   offlineReplay: false,
@@ -79,6 +82,7 @@ export type AppAction =
   | { type: 'SET_BENCHMARK'; payload: BenchmarkResult | null }
   | { type: 'SET_AUDIT_ENTRIES'; payload: AuditEntry[] }
   | { type: 'SET_REPORT_HTML'; payload: string | null }
+  | { type: 'SET_CANARY_ALERT'; payload: AppState['canaryAlert'] }
   | { type: 'SET_SELECTED_PATH'; payload: string | null }
   | { type: 'SET_ACTIVE_TAB'; payload: ActiveTab }
   | { type: 'SET_OFFLINE_REPLAY'; payload: boolean }
@@ -116,6 +120,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         // Reset old trace when a new scenario is loaded
         trace: null,
         reportHtml: null,
+        canaryAlert: null,
+        auditEntries: [],
+        revealDialog: null,
+        revealedValue: null,
         selectedPathId: null,
         controls: {
           archetype: action.payload.archetype,
@@ -136,6 +144,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         trace: action.payload,
+        reportHtml: null,
+        canaryAlert: null,
         selectedPathId: topPathId,
         activeTab: 'origin',
       };
@@ -158,6 +168,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         reportHtml: action.payload,
       };
+
+    case 'SET_CANARY_ALERT':
+      return { ...state, canaryAlert: action.payload };
 
     case 'SET_SELECTED_PATH':
       return {
@@ -213,13 +226,14 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_REVEALED_VALUE':
       return {
         ...state,
-        revealedValue: action.payload,
+        revealedValue: state.revealDialog?.open ? action.payload : null,
       };
 
     case 'SET_INJECT_DIALOG_OPEN':
       return {
         ...state,
         injectDialogOpen: action.payload,
+        error: action.payload ? null : state.error,
       };
 
     case 'LOAD_BUNDLE': {

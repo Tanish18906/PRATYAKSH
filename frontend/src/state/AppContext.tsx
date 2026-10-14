@@ -4,6 +4,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import { AppState, initialState, appReducer, ActiveTab, ControlsState } from './reducer';
 import * as api from '../api/client';
+import type { TraceResult } from '../types/contract';
 
 interface AppContextValue {
   state: AppState;
@@ -126,8 +127,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const openRevealDialog = useCallback((rowIndex: number, field: string, currentMaskedValue: string) => {
+    if (state.busy || state.offlineReplay) return;
     dispatch({ type: 'OPEN_REVEAL_DIALOG', payload: { rowIndex, field, currentMaskedValue } });
-  }, []);
+  }, [state.busy, state.offlineReplay]);
 
   const closeRevealDialog = useCallback(() => {
     dispatch({ type: 'CLOSE_REVEAL_DIALOG' });
@@ -135,6 +137,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setInjectDialogOpen = useCallback((open: boolean) => {
     dispatch({ type: 'SET_INJECT_DIALOG_OPEN', payload: open });
+  }, []);
+
+  const loadReportAndAudit = useCallback(async (trace: TraceResult) => {
+    dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Loading incident report...' } });
+    try {
+      const html = await api.getReport(trace.trace_id);
+      dispatch({ type: 'SET_REPORT_HTML', payload: html });
+    } catch (err: unknown) {
+      dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The incident report could not be loaded.') });
+    }
+    // The report request records an audit entry, so refresh after it completes.
+    try {
+      const audit = await api.getAudit(trace.scenario_id);
+      dispatch({ type: 'SET_AUDIT_ENTRIES', payload: audit.entries });
+    } catch (err: unknown) {
+      dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'Cannot connect to the local backend.') });
+    }
   }, []);
 
   // Action: Generate scenario
@@ -191,21 +210,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       dispatch({ type: 'SET_TRACE', payload: traceRes });
 
-      // 3. Refresh audit and HTML report
-      try {
-        const auditRes = await api.getAudit(state.scenario.id);
-        dispatch({ type: 'SET_AUDIT_ENTRIES', payload: auditRes.entries });
-        const reportRes = await api.getReport(traceRes.trace_id);
-        dispatch({ type: 'SET_REPORT_HTML', payload: reportRes });
-      } catch {
-        // Non-fatal
-      }
+      await loadReportAndAudit(traceRes);
     } catch (err: unknown) {
       dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The tracing engine could not complete this operation.') });
     } finally {
       dispatch({ type: 'SET_BUSY', payload: { busy: false } });
     }
-  }, [state.scenario, state.offlineReplay]);
+  }, [state.scenario, state.offlineReplay, loadReportAndAudit]);
 
   // Action: Re-trace button
   const handleTrace = useCallback(async () => {
@@ -220,14 +231,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       dispatch({ type: 'SET_TRACE', payload: traceRes });
 
-      const auditRes = await api.getAudit(state.scenario.id);
-      dispatch({ type: 'SET_AUDIT_ENTRIES', payload: auditRes.entries });
+      await loadReportAndAudit(traceRes);
     } catch (err: unknown) {
       dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The tracing engine could not complete this operation.') });
     } finally {
       dispatch({ type: 'SET_BUSY', payload: { busy: false } });
     }
-  }, [state.scenario, state.offlineReplay]);
+  }, [state.scenario, state.offlineReplay, loadReportAndAudit]);
 
   // Action: Confirm Reveal with Reason
   const handleRevealConfirm = useCallback(async (reason: string) => {
@@ -260,15 +270,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleInjectConfirm = useCallback(async (actorId: string) => {
     if (!state.scenario || state.offlineReplay) return;
     try {
-      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: `Injecting leak via ${actorId}...` } });
+      dispatch({ type: 'SET_BUSY', payload: { busy: true, message: 'Generating synthetic scenario...' } });
       dispatch({ type: 'SET_ERROR', payload: null });
-      dispatch({ type: 'SET_INJECT_DIALOG_OPEN', payload: false });
 
       const newScenario = await api.injectLeak({
         base_scenario_id: state.scenario.id,
         actor: actorId,
       });
       dispatch({ type: 'SET_SCENARIO', payload: newScenario });
+      dispatch({ type: 'SET_INJECT_DIALOG_OPEN', payload: false });
 
       const auditRes = await api.getAudit(newScenario.id);
       dispatch({ type: 'SET_AUDIT_ENTRIES', payload: auditRes.entries });
@@ -292,15 +302,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       dispatch({ type: 'SET_TRACE', payload: res.trace });
-
-      const auditRes = await api.getAudit(state.scenario.id);
-      dispatch({ type: 'SET_AUDIT_ENTRIES', payload: auditRes.entries });
+      dispatch({ type: 'SET_CANARY_ALERT', payload: res.alert });
+      dispatch({ type: 'SET_ACTIVE_TAB', payload: 'containment' });
+      await loadReportAndAudit(res.trace);
     } catch (err: unknown) {
       dispatch({ type: 'SET_ERROR', payload: api.errorText(err, 'The tracing engine could not complete this operation.') });
     } finally {
       dispatch({ type: 'SET_BUSY', payload: { busy: false } });
     }
-  }, [state.scenario, state.offlineReplay]);
+  }, [state.scenario, state.offlineReplay, loadReportAndAudit]);
 
   // Action: Benchmark
   const handleRunBenchmark = useCallback(async () => {

@@ -163,19 +163,18 @@ export const IncidentPanel: React.FC<IncidentPanelProps> = ({
                           return (
                             <td
                               key={col}
-                              onClick={() => {
-                                if (!offlineReplay) {
-                                  onReveal(rIdx, col, val);
-                                }
-                              }}
-                              className={`p-2 truncate max-w-[120px] transition-colors ${
-                                offlineReplay
-                                  ? 'cursor-not-allowed text-text-secondary'
-                                  : 'cursor-pointer hover:text-accent hover:underline text-text-primary'
-                              }`}
-                              title={offlineReplay ? 'Reveal unavailable during offline replay' : 'Click to request reveal with audit reason'}
+                              className="p-1"
                             >
-                              {val}
+                              <button
+                                type="button"
+                                aria-label={`Reveal ${col}, row ${rIdx + 1}`}
+                                disabled={busy || offlineReplay}
+                                onClick={() => onReveal(rIdx, col, val)}
+                                className="p-1 text-left max-w-[120px] truncate hover:text-accent hover:underline disabled:text-text-secondary disabled:cursor-not-allowed"
+                                title={offlineReplay ? 'Reveal unavailable during offline replay' : 'Requires a reason and creates an audit entry.'}
+                              >
+                                {val}
+                              </button>
                             </td>
                           );
                         })}

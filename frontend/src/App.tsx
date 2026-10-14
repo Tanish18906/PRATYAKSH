@@ -46,6 +46,7 @@ const Dashboard: React.FC = () => {
     benchmark,
     auditEntries,
     reportHtml,
+    canaryAlert,
     selectedPathId,
     activeTab,
     offlineReplay,
@@ -195,6 +196,8 @@ const Dashboard: React.FC = () => {
                 recommendedEvidence={trace?.recommended_evidence || []}
                 originPinned={Boolean(trace?.origin_pinned)}
                 canaryHits={leakSample?.canary_hits || []}
+                canaryAlert={canaryAlert}
+                busy={busy}
                 offlineReplay={offlineReplay}
                 onCanaryAlert={handleCanaryAlert}
               />
@@ -239,11 +242,12 @@ const Dashboard: React.FC = () => {
         />
       )}
 
-      {scenario && (
+      {scenario && injectDialogOpen && (
         <InjectDialog
           open={injectDialogOpen}
           actors={scenario.actors}
           busy={busy}
+          error={error}
           onConfirm={handleInjectConfirm}
           onCancel={() => setInjectDialogOpen(false)}
         />

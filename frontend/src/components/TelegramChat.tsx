@@ -93,12 +93,12 @@ export const TelegramChat: React.FC<TelegramChatProps> = ({
                   {isLeakAttachment && (
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || offlineReplay}
                       onClick={() => onExportAndTrace(msg.id)}
                       className="w-full py-2 px-3 rounded bg-accent hover:bg-accent/90 text-background font-bold text-xs flex items-center justify-center space-x-2 transition-colors disabled:opacity-50 mt-1 shadow-md"
                     >
                       <span>🔍</span>
-                      <span>{offlineReplay ? 'View Demo Trace' : 'Export and Trace Leaked File'}</span>
+                      <span>Export and trace</span>
                     </button>
                   )}
                 </div>
@@ -110,7 +110,7 @@ export const TelegramChat: React.FC<TelegramChatProps> = ({
 
       {/* Footer Disclaimer */}
       <div className="bg-surface/80 px-4 py-2 border-t border-border text-[11px] text-text-muted text-center italic">
-        Simulated channel discovery. No connection to real Telegram or live web service.
+        Synthetic scenario. No real Telegram connection.
       </div>
     </div>
   );

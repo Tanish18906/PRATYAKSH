@@ -18,7 +18,7 @@ interface ScenarioControlsProps {
 }
 
 export const ScenarioControls: React.FC<ScenarioControlsProps> = ({
-  scenario: _scenario,
+  scenario,
   controls,
   busy,
   offlineReplay,
@@ -34,7 +34,7 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({
       <div className="flex flex-wrap items-center gap-4">
         {/* Archetype */}
         <div className="flex items-center space-x-2">
-          <label htmlFor="archetype-select" className="text-xs text-text-muted font-medium uppercase tracking-wider">
+          <label htmlFor="archetype-select" className="text-sm text-text-muted font-medium uppercase tracking-wider">
             Archetype
           </label>
           <select
@@ -42,7 +42,7 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({
             value={controls.archetype}
             disabled={busy || offlineReplay}
             onChange={(e) => onControlsChange({ archetype: e.target.value as Archetype })}
-            className="bg-surface-raised border border-border text-text-primary text-xs rounded px-2.5 py-1.5 focus:border-accent focus:outline-none disabled:opacity-50 font-mono"
+            className="bg-surface-raised border border-border text-text-primary text-sm rounded px-2.5 py-1.5 focus:border-accent focus:outline-none disabled:opacity-50 font-mono"
           >
             <option value="A1">A1: Insider Laptop</option>
             <option value="A2">A2: Compromised Key</option>
@@ -54,7 +54,7 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({
 
         {/* Seed */}
         <div className="flex items-center space-x-2">
-          <label htmlFor="seed-input" className="text-xs text-text-muted font-medium uppercase tracking-wider">
+          <label htmlFor="seed-input" className="text-sm text-text-muted font-medium uppercase tracking-wider">
             Seed
           </label>
           <input
@@ -63,14 +63,14 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({
             value={controls.seed}
             disabled={busy || offlineReplay}
             onChange={(e) => onControlsChange({ seed: parseInt(e.target.value, 10) || 0 })}
-            className="w-16 bg-surface-raised border border-border text-text-primary text-xs rounded px-2 py-1.5 text-center focus:border-accent focus:outline-none disabled:opacity-50 font-mono"
+            className="w-16 bg-surface-raised border border-border text-text-primary text-sm rounded px-2 py-1.5 text-center focus:border-accent focus:outline-none disabled:opacity-50 font-mono"
           />
         </div>
 
         {/* Log Loss Slider */}
         <div className="flex items-center space-x-2 pl-2 border-l border-border">
-          <label htmlFor="loss-slider" className="text-xs text-text-muted font-medium uppercase tracking-wider flex items-center space-x-1">
-            <span>Log Loss</span>
+          <label htmlFor="loss-slider" className="text-sm text-text-muted font-medium uppercase tracking-wider flex items-center space-x-1">
+            <span>Log loss</span>
             <span className="text-accent font-mono font-bold">
               {(controls.log_loss * 100).toFixed(0)}%
             </span>
@@ -82,6 +82,8 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({
             max="0.6"
             step="0.1"
             value={controls.log_loss}
+            title="Percentage of simulated event records removed."
+            aria-valuetext={`${(controls.log_loss * 100).toFixed(0)}%`}
             disabled={busy || offlineReplay}
             onChange={(e) => onControlsChange({ log_loss: parseFloat(e.target.value) })}
             className="w-24 accent-accent cursor-pointer disabled:opacity-50 h-1.5 bg-surface-raised rounded-lg"
@@ -90,14 +92,18 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({
 
         {/* Canary Mode Toggle */}
         <div className="flex items-center space-x-2 pl-2 border-l border-border">
-          <label className="text-xs text-text-muted font-medium uppercase tracking-wider">
-            Canary
+          <label htmlFor="canary-mode" className="text-sm text-text-muted font-medium uppercase tracking-wider">
+            Canary mode
           </label>
           <button
             type="button"
+            id="canary-mode"
+            aria-label="Canary mode"
+            aria-pressed={controls.canary_mode}
+            title="Adds synthetic identifiers used to trace a leaked export."
             disabled={busy || offlineReplay}
             onClick={() => onControlsChange({ canary_mode: !controls.canary_mode })}
-            className={`px-2.5 py-1 text-xs font-mono font-bold rounded border transition-colors ${
+            className={`px-2.5 py-1 text-sm font-mono font-bold rounded border transition-colors ${
               controls.canary_mode
                 ? 'bg-accent-dark/60 text-accent border-accent/40'
                 : 'bg-surface-raised text-text-muted border-border'
@@ -114,36 +120,37 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({
           type="button"
           disabled={busy || offlineReplay}
           onClick={onGenerate}
-          className="px-3.5 py-1.5 text-xs font-semibold rounded bg-surface-raised hover:bg-surface-hover text-text-primary border border-border transition-colors disabled:opacity-50"
+          className="px-3.5 py-1.5 text-sm font-semibold rounded bg-surface-raised hover:bg-surface-hover text-text-primary border border-border transition-colors disabled:opacity-50"
         >
           Generate
         </button>
 
         <button
           type="button"
-          disabled={busy || offlineReplay}
+          disabled={busy || offlineReplay || !scenario}
           onClick={onTrace}
-          className="px-3.5 py-1.5 text-xs font-semibold rounded bg-accent/20 hover:bg-accent/30 text-accent border border-accent/40 transition-colors disabled:opacity-50"
+          className="px-3.5 py-1.5 text-sm font-semibold rounded bg-accent/20 hover:bg-accent/30 text-accent border border-accent/40 transition-colors disabled:opacity-50"
         >
-          Re-trace
+          Trace
         </button>
 
         <button
           type="button"
-          disabled={busy || offlineReplay}
+          disabled={busy || offlineReplay || !scenario}
           onClick={onInject}
-          className="px-3 py-1.5 text-xs font-semibold rounded bg-inferred/20 hover:bg-inferred/30 text-inferred border border-inferred/40 transition-colors disabled:opacity-50"
+          title="Creates a new synthetic scenario through the selected actor."
+          className="px-3 py-1.5 text-sm font-semibold rounded bg-accent/20 hover:bg-accent/30 text-accent border border-accent/40 transition-colors disabled:opacity-50"
         >
-          Inject Leak (Judge)
+          Inject leak (judge picks)
         </button>
 
         <button
           type="button"
           disabled={busy || offlineReplay}
           onClick={onBenchmark}
-          className="px-3 py-1.5 text-xs font-semibold rounded bg-surface-raised hover:bg-surface-hover text-text-secondary border border-border transition-colors disabled:opacity-50"
+          className="px-3 py-1.5 text-sm font-semibold rounded bg-surface-raised hover:bg-surface-hover text-text-secondary border border-border transition-colors disabled:opacity-50"
         >
-          Run Benchmark
+          Run benchmark
         </button>
       </div>
     </div>
