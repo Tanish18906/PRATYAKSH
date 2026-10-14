@@ -2,10 +2,14 @@
 
 import hashlib
 import json
+import os
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
+from threading import Lock
 
 import numpy as np
 
@@ -16,6 +20,7 @@ COMPANY_SEED = 7
 CACHE_DIR = Path(__file__).resolve().parents[2] / "data" / "cache"
 IDENTIFIERS = ("customer_id", "email", "phone", "policy_no")
 STATES = ("CG", "MH", "KA", "MP", "OD", "DL", "TN", "GJ", "UP")
+_CACHE_THREAD_LOCK = Lock()
 
 
 def seconds(iso: str) -> int:
@@ -107,33 +112,80 @@ def seeded_rng(label: str, seed: int):
     return np.random.default_rng(int.from_bytes(digest[:8], "big"))
 
 
+@contextmanager
+def _cache_process_lock(scale: str):
+    """Hold an OS lock while checking or rebuilding the shared hash cache."""
+    path = CACHE_DIR / f"{scale}.lock"
+    with path.open("a+b") as handle:
+        if os.name == "nt":
+            import msvcrt
+
+            handle.seek(0)
+            if not handle.read(1):
+                handle.write(b"\0")
+                handle.flush()
+            handle.seek(0)
+            deadline = time.monotonic() + 60
+            while True:
+                try:
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError:
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError("hash cache lock timed out")
+                    time.sleep(0.05)
+            try:
+                yield
+            finally:
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
 def warm_cache(scale: str) -> BaseTable:
     """Load or build one hash per identifier per row; public JSON never contains the key."""
     # The cache is only valid against Tanish's shared sketch implementation.
     from app.common.sketch import h64, normalize
 
     base = get_base(scale)
-    if base.hashes:
-        return base
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    checksum = hashlib.sha256(base.created.tobytes() + base.states.tobytes() +
-                              base.first.tobytes() + base.last.tobytes()).hexdigest()
-    meta_path = CACHE_DIR / f"{scale}_meta.json"
-    paths = {column: CACHE_DIR / f"{scale}_{column}.npy" for column in IDENTIFIERS}
-    if meta_path.exists() and all(path.exists() for path in paths.values()):
-        meta = json.loads(meta_path.read_text())
-        if meta == {"COMPANY_SEED": COMPANY_SEED, "N": len(base.created), "checksum": checksum}:
-            base.hashes = {column: np.load(path, mmap_mode="r") for column, path in paths.items()}
+    with _CACHE_THREAD_LOCK:
+        if base.hashes:
             return base
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        checksum = hashlib.sha256(base.created.tobytes() + base.states.tobytes() +
+                                  base.first.tobytes() + base.last.tobytes()).hexdigest()
+        expected = {"COMPANY_SEED": COMPANY_SEED, "N": len(base.created), "checksum": checksum}
+        meta_path = CACHE_DIR / f"{scale}_meta.json"
+        paths = {column: CACHE_DIR / f"{scale}_{column}.npy" for column in IDENTIFIERS}
+        with _cache_process_lock(scale):
+            try:
+                meta = json.loads(meta_path.read_text())
+                if meta == expected and all(path.exists() for path in paths.values()):
+                    base.hashes = {column: np.load(path, mmap_mode="r")
+                                   for column, path in paths.items()}
+                    return base
+            except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError):
+                pass
 
-    key = case_key(scale)
-    for column, path in paths.items():
-        hashes = np.fromiter(
-            (h64(key, normalize(column, base.identifier(column, index))) for index in range(len(base.created))),
-            dtype=np.uint64, count=len(base.created),
-        )
-        np.save(path, hashes)
-        base.hashes[column] = hashes
-    meta_path.write_text(json.dumps({"COMPANY_SEED": COMPANY_SEED, "N": len(base.created),
-                                     "checksum": checksum}, sort_keys=True))
+            key = case_key(scale)
+            hashes_by_column = {}
+            for column, path in paths.items():
+                hashes = np.fromiter(
+                    (h64(key, normalize(column, base.identifier(column, index)))
+                     for index in range(len(base.created))),
+                    dtype=np.uint64, count=len(base.created),
+                )
+                np.save(path, hashes)
+                hashes_by_column[column] = hashes
+            temporary_meta = meta_path.with_suffix(".json.tmp")
+            temporary_meta.write_text(json.dumps(expected, sort_keys=True))
+            os.replace(temporary_meta, meta_path)
+            base.hashes = hashes_by_column
     return base
