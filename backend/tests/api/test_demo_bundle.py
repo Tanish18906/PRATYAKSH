@@ -29,7 +29,26 @@ def test_cli_writes_the_file(tmp_path):
     DemoBundle.model_validate(json.loads(out.read_text()))
 
 
-def test_cli_without_simulator_or_fixture_fails_clearly(tmp_path, capsys):
+def test_bundle_script_works_on_the_real_simulator(tmp_path):
+    """Seed 42, A1, demo scale, loss 0.4, canary mode on, straight from the simulator (no fixture)."""
+    from app import main as api
+    assert api._sim() is not None, "the simulator must be importable in an integrated checkout"
+    out = tmp_path / "demo.json"
+    assert bundle_main(["--out", str(out)]) == 0
+    b = json.loads(out.read_text())
+    DemoBundle.model_validate(b)  # strict contract validation
+    assert b["scenario"]["id"] == "scn:A1-42-L40-C"
+    assert b["scenario"]["params"] == {"log_loss": 0.4, "canary_mode": True, "scale": "demo"}
+    assert b["trace"]["origin_pinned"] is True and b["trace"]["origin_ranking"][0]["artifact_id"] == "art:E1"
+    assert "act:ravi-menon" in b["trace"]["hypotheses"][0]["actors"]
+    assert [e["action"] for e in b["audit"]] == ["scenario_generate", "telegram_export", "trace", "report_export"]
+    assert "Verify current legal timelines with counsel." in b["report_html"]
+    assert '"truth"' not in json.dumps(b) and "case_key" not in json.dumps(b)
+
+
+def test_cli_without_a_simulator_and_without_a_fixture_fails_clearly(tmp_path, capsys, monkeypatch):
+    from app import main as api
+    monkeypatch.setattr(api, "_sim", lambda: None)
     out = tmp_path / "demo.json"
     assert bundle_main(["--out", str(out)]) != 0
     assert "simulator" in capsys.readouterr().err.lower() and not out.exists()
