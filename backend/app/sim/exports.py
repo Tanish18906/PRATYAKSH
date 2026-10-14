@@ -29,3 +29,36 @@ def make_artifact(base: BaseTable, artifact_id: str, dataset: str, created_by: s
         "newest_record_ts": timestamp(int(base.created[indices[-1]])),
         "arrivals_per_hour": round(int(recent) / 720, 4), "canary_ids": [],
     }
+
+
+def plant_canaries(artifacts: list[dict], key: bytes) -> tuple[list[dict], dict[str, list[dict]]]:
+    """Add three synthetic records per artifact and return private row data by artifact."""
+    from app.common.sketch import h64, normalize
+
+    registry = []
+    rows_by_artifact = {}
+    for artifact in artifacts:
+        slug = artifact["id"].removeprefix("art:")
+        number = int(slug.removeprefix("E"))
+        rows = []
+        for n in range(1, 4):
+            canary_id = f"can:{slug}-{n}"
+            row = {"customer_id": f"CAN{slug}{n}", "full_name": "Canary Record",
+                   "email": f"canary.{slug.lower()}.{n}@example.net",
+                   "phone": f"500{number:03d}{n:04d}", "policy_no": f"CAN-{slug}-{n}",
+                   "dob": "1990-01-01", "city": "Raipur", "state": "CG",
+                   "signup_date": artifact["newest_record_ts"][:10],
+                   "created_at": artifact["newest_record_ts"], "premium_tier": "basic"}
+            hashes = {column: f"{h64(key, normalize(column, row[column])):016x}"
+                      for column in ("customer_id", "email", "phone", "policy_no")
+                      if column in artifact["columns"]}
+            registry.append({"id": canary_id, "export_id": artifact["id"], "hashes": hashes})
+            artifact["canary_ids"].append(canary_id)
+            rows.append({"id": canary_id, "values": row, "hashes": hashes})
+        artifact["row_count"] += 3
+        for column, sketch in artifact["sketches"].items():
+            sketch["distinct"] += 3
+            sketch["hashes"] = sorted(set(sketch["hashes"]) |
+                                      {row["hashes"][column] for row in rows})[:sketch["k"]]
+        rows_by_artifact[artifact["id"]] = rows
+    return registry, rows_by_artifact
