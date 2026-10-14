@@ -82,12 +82,19 @@ def _score(leak: dict, art: dict) -> dict:
     return cand
 
 
+def tie_key(art: dict) -> tuple:
+    """Order among artifacts the score cannot separate: earlier creation, more rows, creator, then id.
+    The id is the very last resort and only orders exact ties; it never enters a score or a probability."""
+    return (art["created_ts"], -art["row_count"], art["created_by"], art["id"])
+
+
 def score_candidates(sc: dict) -> list:
-    """All artifacts, unrounded: candidates by origin_fit desc, then excluded by created_ts."""
-    created = {a["id"]: a["created_ts"] for a in sc["artifacts"]}
+    """All artifacts, unrounded: candidates by origin_fit desc, then excluded; both ordered by tie_key."""
+    arts = {a["id"]: a for a in sc["artifacts"]}
     rows = [_score(sc["leak_sample"], a) for a in sc["artifacts"]]
-    ok = sorted((r for r in rows if r["verdict"] == "candidate"), key=lambda r: -r["origin_fit"])
-    out = sorted((r for r in rows if r["verdict"] == "excluded"), key=lambda r: created[r["artifact_id"]])
+    ok = sorted((r for r in rows if r["verdict"] == "candidate"),
+                key=lambda r: (-r["origin_fit"],) + tie_key(arts[r["artifact_id"]]))
+    out = sorted((r for r in rows if r["verdict"] == "excluded"), key=lambda r: tie_key(arts[r["artifact_id"]]))
     return ok + out
 
 
